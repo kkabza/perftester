@@ -1,0 +1,34 @@
+{
+  "name": "moo-cli-performance-tester",
+  "version": "1.0.0",
+  "description": "A web-based performance testing tool for MOO CLI commands",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kkabza/perftester.git"
+  },
+  "keywords": [
+    "moo",
+    "cli",
+    "performance",
+    "testing"
+  ],
+  "author": "Keith Kabza",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kkabza/perftester/issues"
+  },
+  "homepage": "https://github.com/kkabza/perftester#readme",
+  "dependencies": {
+    "express": "^4.17.1",
+    "chart.js": "^3.7.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0"
+  }
+}
