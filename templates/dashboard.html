@@ -1,0 +1,1631 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOO CLI Performance Tester - Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="flex h-screen">
+        <!-- Left Navigation Panel -->
+        <div class="w-64 bg-green-800 text-white">
+            <div class="p-4">
+                <h1 class="text-xl font-bold mb-4">MOO Commands</h1>
+                <nav class="space-y-2">
+                    <button onclick="showSection('login')" class="w-full text-left p-2 hover:bg-gray-700 rounded" id="nav-login">
+                        Login/Logout
+                    </button>
+                    <button onclick="showSection('ls')" class="w-full text-left p-2 hover:bg-gray-700 rounded" id="nav-ls">
+                        moo ls
+                    </button>
+                    <button onclick="showSection('get')" class="w-full text-left p-2 hover:bg-gray-700 rounded" id="nav-get">
+                        moo get
+                    </button>
+                    <button onclick="showSection('si')" class="w-full text-left p-2 hover:bg-gray-700 rounded" id="nav-si">
+                        moo si
+                    </button>
+                    <button onclick="showSection('put')" class="w-full text-left p-2 hover:bg-gray-700 rounded" id="nav-put">
+                        moo put
+                    </button>
+                    <button onclick="showSection('appinsights')" class="w-full text-left p-2 hover:bg-gray-700 rounded" id="nav-appinsights">
+                        App Insights Search
+                    </button>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 overflow-auto">
+            <div class="p-8">
+                <!-- Top Bar -->
+                <div class="flex justify-between items-center mb-8">
+                    <h2 class="text-2xl font-bold" id="section-title">MOO CLI Performance Tester</h2>
+                    <button onclick="adminLogout()" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700">
+                        Logout Admin
+                    </button>
+                </div>
+
+                <!-- Performance Test Controls -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h3 class="text-xl font-semibold mb-4">Performance Test Settings</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Number of Iterations</label>
+                            <input type="number" id="iterations" value="10" min="1" max="100" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Delay Between Runs (ms)</label>
+                            <input type="number" id="delay" value="1000" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="clearResults()" class="bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 mr-2">
+                                Clear Results
+                            </button>
+                            <button onclick="stopTest()" class="bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 hidden" id="stopButton">
+                                Stop Test
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Login Section -->
+                <div id="login-section" class="space-y-6" style="display: block;">
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-xl font-semibold mb-4">MOO Login Options</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Username</label>
+                                    <input type="text" id="mooUsername" value="abbia@supercomputing2020dev.onmicrosoft.com" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Password</label>
+                                    <input type="password" id="mooPassword" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Login Options</label>
+                                <div class="space-y-2">
+                                    <label class="flex items-center">
+                                        <input type="checkbox" id="deviceCode" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                        <span class="ml-2 text-sm text-gray-600">Device Code (-d)</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" id="interactive" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                        <span class="ml-2 text-sm text-gray-600">Interactive (-i)</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" id="managedIdentity" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                        <span class="ml-2 text-sm text-gray-600">Managed Identity (-m)</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" id="servicePrincipal" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                        <span class="ml-2 text-sm text-gray-600">Service Principal (-s)</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" id="refresh" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                        <span class="ml-2 text-sm text-gray-600">Refresh (-r)</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex space-x-4">
+                            <button onclick="mooLogin()" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">
+                                Execute MOO Login
+                            </button>
+                            <button onclick="mooLogout()" class="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700">
+                                Execute MOO Logout
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LS Command Section -->
+                <div id="ls-section" class="space-y-6" style="display: none;">
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-xl font-semibold mb-4">MOO LS Command</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">MOOSE URI</label>
+                                <input type="text" id="mooseUri" value=":/test" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            </div>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="lsAccessTime" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Access Time (-u)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="lsAll" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">All (-a)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="lsDirectory" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Directory (-d)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="lsFull" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Full (-f)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="lsMedia" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Media (-m)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="lsRecursive" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Recursive (-r)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="lsRegex" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Regex</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="lsSize" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Size (-S)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="lsTime" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Time (-t)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="lsViewMetadata" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">View Metadata (-v)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="lsXml" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">XML (-x)</span>
+                                </label>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Page Range (Optional)</label>
+                                <input type="text" id="lsPage" placeholder="e.g., 12-18:12" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            </div>
+                            <button onclick="executeLsCommand()" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 relative" id="lsCommandBtn">
+                                <span>Execute LS Command</span>
+                                <span class="hidden absolute inset-0 flex items-center justify-center bg-green-600" id="lsCommandLoading">
+                                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </span>
+                            </button>
+                            <button onclick="runPerformanceTest(() => executeLsCommand(true))" class="bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700">
+                                Run Performance Test
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GET Command Section -->
+                <div id="get-section" class="space-y-6" style="display: none;">
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-xl font-semibold mb-4">MOO GET Command</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">MOOSE URI</label>
+                                <input type="text" id="getMooseUri" value="moose:/test/core/magnitude-pp/dc-00000010.pp/file-00000001.pp" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Destination Path</label>
+                                <input type="text" id="getDestPath" value="." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            </div>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="getAppend" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Append (-a)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="getCompressed" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Compressed Transfer (-z)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="getFillGaps" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Fill Gaps (-i)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="getFillGapsOverwrite" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Fill Gaps & Overwrite (-I)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="getForce" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Force (-f)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="getIfAvailable" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Get If Available (-g)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="getLargeRetrieval" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Large Retrieval (-b)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="getRegex" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Regex</span>
+                                </label>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">License File Path (Optional)</label>
+                                <input type="text" id="getLicenseFile" placeholder="Path to license file" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            </div>
+                            <button onclick="executeGetCommand()" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 relative" id="getCommandBtn">
+                                <span>Execute GET Command</span>
+                                <span class="hidden absolute inset-0 flex items-center justify-center bg-green-600" id="getCommandLoading">
+                                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </span>
+                            </button>
+                            <button onclick="runPerformanceTest(() => executeGetCommand(true))" class="bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700">
+                                Run Performance Test
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SI Command Section -->
+                <div id="si-section" class="space-y-6" style="display: none;">
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-xl font-semibold mb-4">MOO SI Command</h3>
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="siLong" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Long/Verbose (-l)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="siXml" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">XML (-x)</span>
+                                </label>
+                            </div>
+                            <button onclick="executeSiCommand()" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 relative" id="siCommandBtn">
+                                <span>Execute SI Command</span>
+                                <span class="hidden absolute inset-0 flex items-center justify-center bg-green-600" id="siCommandLoading">
+                                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </span>
+                            </button>
+                            <button onclick="runPerformanceTest(() => executeSiCommand(true))" class="bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700">
+                                Run Performance Test
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PUT Command Section -->
+                <div id="put-section" class="space-y-6" style="display: none;">
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-xl font-semibold mb-4">MOO PUT Command</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Source Path(s)</label>
+                                <input type="text" id="putSourcePath" value="./Downloads/file-00000001.pp" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <p class="mt-1 text-sm text-gray-500">Can be a file path or wildcard pattern (e.g., ./dir1/*)</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Destination MOOSE URI</label>
+                                <input type="text" id="putDestUri" value=":/test/core/upload/put-09998.pp/put-file-00000002.pp" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            </div>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="putCompressed" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Compressed Transfer (-z)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="putForce" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Force (-f)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="putForceExcludingIdentical" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Force Excluding Identical (-F)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="putDryRun" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Dry Run</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="putQuiet" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Quiet</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="putVerbose" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-600">Verbose (-v)</span>
+                                </label>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Transfer Threads (Optional)</label>
+                                <input type="number" id="putTransferThreads" placeholder="Maximum number of concurrent FTP threads" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Act As Role (Optional)</label>
+                                <input type="text" id="putActAs" placeholder="Role name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            </div>
+                            <button onclick="executePutCommand()" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 relative" id="putCommandBtn">
+                                <span>Execute PUT Command</span>
+                                <span class="hidden absolute inset-0 flex items-center justify-center bg-green-600" id="putCommandLoading">
+                                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </span>
+                            </button>
+                            <button onclick="runPerformanceTest(() => executePutCommand(true))" class="bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700">
+                                Run Performance Test
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- App Insights Search Section -->
+                <div id="appinsights-section" class="space-y-6" style="display: none;">
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-xl font-semibold mb-4">Azure App Insights Command Search</h3>
+                        <div class="space-y-4">
+                            <div class="form-group">
+                                <label for="apiKey">App Insights API Key:</label>
+                                <input type="password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" id="apiKey" placeholder="Enter your API key">
+                            </div>
+                            <div class="form-group">
+                                <label for="appId">Application ID:</label>
+                                <input type="text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" id="appId" value="b1a6e0c7-3049-45ef-8323-ef54fab6f5a2" placeholder="Enter your Application ID">
+                            </div>
+                            <div class="form-group">
+                                <label for="commandId">Search Query:</label>
+                                <input type="text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" id="commandId" value="3bae8141-c165-4e56-a6c1-68bc92105064" placeholder="Enter text to search for">
+                                <p class="mt-1 text-sm text-gray-500">Enter any text to search for in App Insights (traces, requests, etc.)</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Time Range</label>
+                                <select id="timeRange" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    <option value="1h">Last Hour</option>
+                                    <option value="24h" selected>Last 24 Hours</option>
+                                    <option value="7d">Last 7 Days</option>
+                                    <option value="30d">Last 30 Days</option>
+                                </select>
+                            </div>
+                            <div class="mt-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Search In:</label>
+                                <div class="space-x-4">
+                                    <label class="inline-flex items-center">
+                                        <input type="checkbox" id="searchTraces" class="rounded border-gray-300 text-indigo-600" checked>
+                                        <span class="ml-2">Traces</span>
+                                    </label>
+                                    <label class="inline-flex items-center">
+                                        <input type="checkbox" id="searchRequests" class="rounded border-gray-300 text-indigo-600" checked>
+                                        <span class="ml-2">Requests</span>
+                                    </label>
+                                    <label class="inline-flex items-center">
+                                        <input type="checkbox" id="searchDependencies" class="rounded border-gray-300 text-indigo-600" checked>
+                                        <span class="ml-2">Dependencies</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <button onclick="searchAppInsights()" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 relative" id="searchButton">
+                                <span>Search Command</span>
+                                <span class="hidden absolute inset-0 flex items-center justify-center bg-blue-600" id="searchSpinner">
+                                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Search Results -->
+                    <div id="searchResults" class="bg-white rounded-lg shadow-md p-6 hidden">
+                        <h3 class="text-xl font-semibold mb-4">Search Results</h3>
+                        <div class="space-y-4">
+                            <div id="commandDetails" class="space-y-2">
+                                <!-- Command details will be populated here -->
+                            </div>
+                            <div id="commandTimeline" class="space-y-2">
+                                <!-- Timeline will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Results -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h3 class="text-xl font-semibold mb-4">Performance Results</h3>
+                    <div class="flex gap-6">
+                        <!-- Main Response Time Chart -->
+                        <div class="flex-grow" style="min-height: 400px">
+                            <canvas id="responseTimeChart"></canvas>
+                        </div>
+                        <!-- Side Panel with Pie Chart and Stats -->
+                        <div class="w-72 flex flex-col">
+                            <!-- Small Pie Chart -->
+                            <div class="mb-4" style="height: 160px">
+                                <canvas id="statusChart"></canvas>
+                            </div>
+                            <!-- Statistics -->
+                            <div class="space-y-3">
+                                <div class="bg-gray-50 p-3 rounded-lg">
+                                    <h4 class="text-sm font-medium text-gray-500">Average Response Time</h4>
+                                    <p class="text-lg font-semibold" id="avgResponseTime">-</p>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded-lg">
+                                    <h4 class="text-sm font-medium text-gray-500">Min Response Time</h4>
+                                    <p class="text-lg font-semibold" id="minResponseTime">-</p>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded-lg">
+                                    <h4 class="text-sm font-medium text-gray-500">Max Response Time</h4>
+                                    <p class="text-lg font-semibold" id="maxResponseTime">-</p>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded-lg">
+                                    <h4 class="text-sm font-medium text-gray-500">Success Rate</h4>
+                                    <p class="text-lg font-semibold" id="successRate">-</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Results Table -->
+                    <div class="mt-6 overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Run #</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Response Time (ms)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Output</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsTable" class="bg-white divide-y divide-gray-200">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Output Section -->
+                <div class="bg-white rounded-lg shadow-md p-6 mt-6">
+                    <h3 class="text-xl font-semibold mb-4">Command Preview</h3>
+                    <pre id="commandPreview" class="bg-gray-100 p-4 rounded-md text-sm overflow-auto max-h-32 font-mono"></pre>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6 mt-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold">Latest Output</h3>
+                        <div class="flex space-x-2">
+                            <button onclick="showPreviousOutput()" id="prevOutputBtn" class="bg-gray-500 text-white py-1 px-3 rounded-md hover:bg-gray-600 disabled:opacity-50" disabled>
+                                Previous
+                            </button>
+                            <span id="outputCounter" class="px-3 py-1 bg-gray-100 rounded-md">0/0</span>
+                            <button onclick="showNextOutput()" id="nextOutputBtn" class="bg-gray-500 text-white py-1 px-3 rounded-md hover:bg-gray-600 disabled:opacity-50" disabled>
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                    <pre id="outputText" class="bg-gray-100 p-4 rounded-md text-sm overflow-auto max-h-96"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let performanceData = [];
+        let isTestRunning = false;
+        let responseTimeChart = null;
+        let statusChart = null;
+        let currentTest = null;
+        let startTime;
+        let cachedOutputs = [];
+        let currentOutputIndex = -1;
+
+        // Initialize charts
+        function initializeCharts() {
+            if (responseTimeChart) responseTimeChart.destroy();
+            if (statusChart) statusChart.destroy();
+
+            responseTimeChart = new Chart(document.getElementById('responseTimeChart'), {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Response Time (ms)',
+                        data: [],
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                        tension: 0.1,
+                        fill: true,
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + ' ms';
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Response Time Trend',
+                            font: {
+                                size: 16,
+                                weight: 'normal'
+                            },
+                            padding: {
+                                bottom: 20
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+
+            statusChart = new Chart(document.getElementById('statusChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Success', 'Failed'],
+                    datasets: [{
+                        data: [0, 0],
+                        backgroundColor: ['rgb(34, 197, 94)', 'rgb(239, 68, 68)']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: 11
+                                },
+                                padding: 15
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Success Rate',
+                            font: {
+                                size: 14,
+                                weight: 'normal'
+                            },
+                            padding: {
+                                bottom: 10
+                            }
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+        }
+
+        function updateCharts() {
+            // Update response time chart
+            responseTimeChart.data.labels = performanceData.map((_, i) => `Run ${i + 1}`);
+            responseTimeChart.data.datasets[0].data = performanceData.map(d => d.responseTime);
+            responseTimeChart.update('active'); // Force immediate update
+
+            // Update status chart
+            const successes = performanceData.filter(d => d.success).length;
+            const failures = performanceData.length - successes;
+            statusChart.data.datasets[0].data = [successes, failures];
+            statusChart.update('active'); // Force immediate update
+        }
+
+        function updateStatistics() {
+            if (performanceData.length === 0) {
+                document.getElementById('avgResponseTime').textContent = '-';
+                document.getElementById('minResponseTime').textContent = '-';
+                document.getElementById('maxResponseTime').textContent = '-';
+                document.getElementById('successRate').textContent = '-';
+                return;
+            }
+
+            const responseTimes = performanceData.map(d => d.responseTime);
+            const avg = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
+            const min = Math.min(...responseTimes);
+            const max = Math.max(...responseTimes);
+            const successRate = (performanceData.filter(d => d.success).length / performanceData.length) * 100;
+
+            // Force immediate DOM updates
+            requestAnimationFrame(() => {
+            document.getElementById('avgResponseTime').textContent = `${avg.toFixed(2)} ms`;
+            document.getElementById('minResponseTime').textContent = `${min.toFixed(2)} ms`;
+            document.getElementById('maxResponseTime').textContent = `${max.toFixed(2)} ms`;
+            document.getElementById('successRate').textContent = `${successRate.toFixed(1)}%`;
+            });
+        }
+
+        function updateResultsTable() {
+            const tbody = document.getElementById('resultsTable');
+            requestAnimationFrame(() => {
+            tbody.innerHTML = performanceData.map((data, index) => `
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap">${index + 1}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${data.responseTime.toFixed(2)} ms</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${data.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                            ${data.success ? 'Success' : 'Failed'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${data.success ? data.message : `${data.message}${data.error ? ` - ${data.error}` : ''}`}
+                    </td>
+                </tr>
+            `).join('');
+            });
+        }
+
+        function clearResults() {
+            performanceData = [];
+            cachedOutputs = [];
+            currentOutputIndex = -1;
+            updateCharts();
+            updateStatistics();
+            updateResultsTable();
+            document.getElementById('outputText').textContent = '';
+            updateOutputNavigation();
+        }
+
+        function stopTest() {
+            isTestRunning = false;
+            document.getElementById('stopButton').classList.add('hidden');
+            
+            // Reset all performance test buttons
+            document.querySelectorAll('button[onclick*="runPerformanceTest"]').forEach(btn => {
+                updatePerformanceTestButton(btn, false);
+            });
+        }
+
+        // Add this helper function to update the performance test button state
+        function updatePerformanceTestButton(button, isRunning, currentIteration = null, totalIterations = null) {
+            if (isRunning) {
+                button.disabled = true;
+                button.classList.add('opacity-50', 'cursor-not-allowed');
+                if (currentIteration !== null && totalIterations !== null) {
+                    button.textContent = `Running Test ${currentIteration}/${totalIterations}...`;
+                } else {
+                    button.textContent = 'Running Test...';
+                }
+            } else {
+                button.disabled = false;
+                button.classList.remove('opacity-50', 'cursor-not-allowed');
+                button.textContent = 'Run Performance Test';
+            }
+        }
+
+        // Update the runPerformanceTest function
+        async function runPerformanceTest(commandFunction) {
+            const iterations = parseInt(document.getElementById('iterations').value);
+            const delay = parseInt(document.getElementById('delay').value);
+            
+            // Get the specific performance test button that was clicked
+            const perfTestBtn = document.activeElement;
+            if (!perfTestBtn || !perfTestBtn.textContent.includes('Run Performance Test')) {
+                console.error('Could not identify performance test button');
+                return;
+            }
+
+            isTestRunning = true;
+            document.getElementById('stopButton').classList.remove('hidden');
+            
+            // Clear previous results
+            clearResults();
+            
+            // Initial button state
+            updatePerformanceTestButton(perfTestBtn, true, 0, iterations);
+            
+            try {
+                for (let i = 0; i < iterations && isTestRunning; i++) {
+                    // Update button text before each iteration
+                    updatePerformanceTestButton(perfTestBtn, true, i + 1, iterations);
+                    
+                    try {
+                        console.log(`Starting iteration ${i + 1}/${iterations}`);
+                        const result = await commandFunction();
+                        console.log(`Completed iteration ${i + 1}/${iterations}`, result);
+                        
+                        // Cache the output with command information
+                        const commandPreview = result.command || document.getElementById('commandPreview').textContent;
+                        cachedOutputs.push({
+                            ...result,
+                            command: commandPreview,
+                            iterationNumber: i + 1
+                        });
+                        currentOutputIndex = cachedOutputs.length - 1;
+                        
+                        performanceData.push({
+                            responseTime: result.serverTiming || result.responseTime,
+                            success: result.success,
+                            message: result.message,
+                            error: result.error,
+                            output: result.output
+                        });
+                        
+                        // Force immediate UI updates
+                        await new Promise(resolve => {
+                            requestAnimationFrame(() => {
+                                try {
+                                    displayCachedOutput(currentOutputIndex);
+                                    updateCharts();
+                                    updateStatistics();
+                                    updateResultsTable();
+                                    resolve();
+                                } catch (updateError) {
+                                    console.error('Error updating UI:', updateError);
+                                    resolve();
+                                }
+                            });
+                        });
+                        
+                    } catch (iterationError) {
+                        console.error(`Error in iteration ${i + 1}:`, iterationError);
+                        
+                        const errorResult = {
+                            success: false,
+                            message: 'Test failed',
+                            error: iterationError.message,
+                            responseTime: 0,
+                            command: document.getElementById('commandPreview').textContent,
+                            iterationNumber: i + 1
+                        };
+                        
+                        cachedOutputs.push(errorResult);
+                        currentOutputIndex = cachedOutputs.length - 1;
+                        
+                        performanceData.push({
+                            responseTime: 0,
+                            success: false,
+                            message: 'Test failed',
+                            error: iterationError.message
+                        });
+                        
+                        // Update UI even for errors
+                        await new Promise(resolve => {
+                            requestAnimationFrame(() => {
+                                try {
+                                    displayCachedOutput(currentOutputIndex);
+                                    updateCharts();
+                                    updateStatistics();
+                                    updateResultsTable();
+                                    resolve();
+                                } catch (updateError) {
+                                    console.error('Error updating UI:', updateError);
+                                    resolve();
+                                }
+                            });
+                        });
+                    }
+                    
+                    // Wait for delay between iterations
+                    if (i < iterations - 1 && isTestRunning) {
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                }
+            } catch (error) {
+                console.error('Performance test failed:', error);
+            } finally {
+                // Reset test state
+                isTestRunning = false;
+                document.getElementById('stopButton').classList.add('hidden');
+                updatePerformanceTestButton(perfTestBtn, false);
+                
+                // Final UI update
+                await new Promise(resolve => {
+                    requestAnimationFrame(() => {
+                        try {
+                            updateCharts();
+                            updateStatistics();
+                            updateResultsTable();
+                            resolve();
+                        } catch (error) {
+                            console.error('Error in final UI update:', error);
+                            resolve();
+                        }
+                    });
+                });
+            }
+        }
+
+        function updateOutputNavigation() {
+            const prevBtn = document.getElementById('prevOutputBtn');
+            const nextBtn = document.getElementById('nextOutputBtn');
+            const counter = document.getElementById('outputCounter');
+            
+            prevBtn.disabled = currentOutputIndex <= 0;
+            nextBtn.disabled = currentOutputIndex >= cachedOutputs.length - 1;
+            
+            if (cachedOutputs.length > 0) {
+                counter.textContent = `${currentOutputIndex + 1}/${cachedOutputs.length}`;
+            } else {
+                counter.textContent = '0/0';
+            }
+        }
+
+        function showPreviousOutput() {
+            if (currentOutputIndex > 0) {
+                currentOutputIndex--;
+                displayCachedOutput(currentOutputIndex);
+            }
+        }
+
+        function showNextOutput() {
+            if (currentOutputIndex < cachedOutputs.length - 1) {
+                currentOutputIndex++;
+                displayCachedOutput(currentOutputIndex);
+            }
+        }
+
+        function displayCachedOutput(index) {
+            const output = cachedOutputs[index];
+            const outputElement = document.getElementById('outputText');
+            
+            // Update command preview
+            const commandPreview = document.getElementById('commandPreview');
+            if (output.command) {
+                commandPreview.textContent = output.command;
+                commandPreview.classList.remove('text-gray-400');
+                commandPreview.classList.add('text-gray-900');
+            }
+            
+            // Build detailed output text
+            const outputText = [
+                `Test Run ${output.iterationNumber}`,
+                `Command: ${output.command || 'Unknown command'}`,
+                `Status: ${output.success ? 'Success' : 'Failed'}`,
+                `Response Time: ${output.responseTime.toFixed(2)} ms`,
+                `Message: ${output.message}`
+            ];
+
+            if (output.output) {
+                outputText.push('\nOutput:', output.output);
+            }
+            if (output.error) {
+                outputText.push('\nError:', output.error);
+            }
+            
+            outputElement.textContent = outputText.join('\n');
+            outputElement.className = output.success ? 
+                'bg-green-50 p-4 rounded-md text-sm overflow-auto max-h-96' : 
+                'bg-red-50 p-4 rounded-md text-sm overflow-auto max-h-96';
+            
+            updateOutputNavigation();
+        }
+
+        function updateOutput(data) {
+            const outputElement = document.getElementById('outputText');
+            const output = `Status: ${data.success ? 'Success' : 'Failed'}
+Message: ${data.message}
+${data.output ? '\nOutput:\n' + data.output : ''}${data.error ? '\nError:\n' + data.error : ''}`;
+            
+            // Use requestAnimationFrame for smoother updates
+            requestAnimationFrame(() => {
+                outputElement.textContent = output;
+                outputElement.className = data.success ? 
+                    'bg-green-50 p-4 rounded-md text-sm overflow-auto max-h-96' : 
+                    'bg-red-50 p-4 rounded-md text-sm overflow-auto max-h-96';
+            });
+        }
+
+        async function mooLogin() {
+            const username = document.getElementById('mooUsername').value;
+            const password = document.getElementById('mooPassword').value;
+            const deviceCode = document.getElementById('deviceCode').checked;
+            const interactive = document.getElementById('interactive').checked;
+            const managedIdentity = document.getElementById('managedIdentity').checked;
+            const servicePrincipal = document.getElementById('servicePrincipal').checked;
+            const refresh = document.getElementById('refresh').checked;
+
+            try {
+                const response = await fetch('/api/moo-login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username,
+                        password,
+                        device_code: deviceCode,
+                        interactive,
+                        managed_identity: managedIdentity,
+                        service_principal: servicePrincipal,
+                        refresh
+                    }),
+                });
+                
+                const data = await response.json();
+                updateOutput(data);
+                if (data.success) {
+                    document.getElementById('login-section').classList.add('hidden');
+                    document.getElementById('ls-section').classList.remove('hidden');
+                    showSection('ls');
+                }
+            } catch (error) {
+                updateOutput({ success: false, message: 'Error: ' + error.message });
+            }
+        }
+
+        async function mooLogout() {
+            try {
+                const response = await fetch('/api/moo-logout', {
+                    method: 'POST',
+                });
+                
+                const data = await response.json();
+                updateOutput(data);
+            } catch (error) {
+                updateOutput({ success: false, message: 'Error: ' + error.message });
+            }
+        }
+
+        function updateCommandPreview(args) {
+            const commandPreview = document.getElementById('commandPreview');
+            const fullCommand = Array.isArray(args) ? `moo ${args.join(' ')}` : args;
+            commandPreview.textContent = fullCommand;
+            commandPreview.classList.remove('text-gray-400');
+            commandPreview.classList.add('text-gray-900');
+            return fullCommand; // Return the command string for use elsewhere
+        }
+
+        async function executeLsCommand(isPerformanceTest = false) {
+            const uri = document.getElementById('mooseUri').value;
+            const args = ['ls'];
+            
+            if (uri) args.push(uri);
+            
+            // Collect all options
+            const options = {
+                'lsAccessTime': '--access-time',
+                'lsAll': '--all',
+                'lsDirectory': '--directory',
+                'lsFull': '--full',
+                'lsMedia': '--media',
+                'lsRecursive': '--recursive',
+                'lsRegex': '--regex',
+                'lsSize': '--size',
+                'lsTime': '--time',
+                'lsViewMetadata': '--view-metadata',
+                'lsXml': '--xml'
+            };
+
+            // Add enabled options
+            Object.entries(options).forEach(([id, flag]) => {
+                if (document.getElementById(id).checked) args.push(flag);
+            });
+            
+            const page = document.getElementById('lsPage').value;
+            if (page) args.push(`--page=${page}`);
+
+            // Always update command preview
+            updateCommandPreview(args);
+            
+            if (!isPerformanceTest) {
+                const btn = document.getElementById('lsCommandBtn');
+                const loadingSpinner = document.getElementById('lsCommandLoading');
+                btn.disabled = true;
+                btn.querySelector('span:not(#lsCommandLoading)').classList.add('opacity-0');
+                loadingSpinner.classList.remove('hidden');
+            }
+            
+            startTime = performance.now();
+            
+            try {
+                const response = await fetch('/api/execute-command', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-store',
+                        'Pragma': 'no-cache'
+                    },
+                    body: JSON.stringify({ args }),
+                });
+                
+                const data = await response.json();
+                data.responseTime = data.serverTiming || (performance.now() - startTime);
+                
+                // Always update output
+                updateOutput(data);
+                
+                if (!isPerformanceTest) {
+                    const btn = document.getElementById('lsCommandBtn');
+                    const loadingSpinner = document.getElementById('lsCommandLoading');
+                    btn.disabled = false;
+                    btn.querySelector('span:not(#lsCommandLoading)').classList.remove('opacity-0');
+                    loadingSpinner.classList.add('hidden');
+                }
+                return data;
+            } catch (error) {
+                const errorData = { 
+                    success: false, 
+                    message: 'Error: ' + (error.name === 'AbortError' ? 'Request timed out' : error.message),
+                    responseTime: performance.now() - startTime
+                };
+                // Always update output for errors
+                updateOutput(errorData);
+                
+                if (!isPerformanceTest) {
+                    const btn = document.getElementById('lsCommandBtn');
+                    const loadingSpinner = document.getElementById('lsCommandLoading');
+                    btn.disabled = false;
+                    btn.querySelector('span:not(#lsCommandLoading)').classList.remove('opacity-0');
+                    loadingSpinner.classList.add('hidden');
+                }
+                return errorData;
+            }
+        }
+
+        async function executeSiCommand(isPerformanceTest = false) {
+            const args = ['si'];
+            
+            if (document.getElementById('siLong').checked) args.push('--long');
+            if (document.getElementById('siXml').checked) args.push('--xml');
+
+            // Always update command preview
+            updateCommandPreview(args);
+            
+            if (!isPerformanceTest) {
+                const btn = document.getElementById('siCommandBtn');
+                const loadingSpinner = document.getElementById('siCommandLoading');
+                btn.disabled = true;
+                btn.querySelector('span:not(#siCommandLoading)').classList.add('opacity-0');
+                loadingSpinner.classList.remove('hidden');
+            }
+            
+            startTime = performance.now();
+            
+            try {
+                const response = await fetch('/api/execute-command', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-store',
+                        'Pragma': 'no-cache'
+                    },
+                    body: JSON.stringify({ args }),
+                });
+                
+                const data = await response.json();
+                data.responseTime = data.serverTiming || (performance.now() - startTime);
+                
+                // Always update output
+                updateOutput(data);
+                
+                if (!isPerformanceTest) {
+                    const btn = document.getElementById('siCommandBtn');
+                    const loadingSpinner = document.getElementById('siCommandLoading');
+                    btn.disabled = false;
+                    btn.querySelector('span:not(#siCommandLoading)').classList.remove('opacity-0');
+                    loadingSpinner.classList.add('hidden');
+                }
+                return data;
+            } catch (error) {
+                const errorData = { 
+                    success: false, 
+                    message: 'Error: ' + error.message,
+                    responseTime: performance.now() - startTime
+                };
+                // Always update output for errors
+                updateOutput(errorData);
+                
+                if (!isPerformanceTest) {
+                    const btn = document.getElementById('siCommandBtn');
+                    const loadingSpinner = document.getElementById('siCommandLoading');
+                    btn.disabled = false;
+                    btn.querySelector('span:not(#siCommandLoading)').classList.remove('opacity-0');
+                    loadingSpinner.classList.add('hidden');
+                }
+                return errorData;
+            }
+        }
+
+        // Add this function to handle button states
+        function updateGetCommandButtons(isRunning) {
+            const executeBtn = document.getElementById('getCommandBtn');
+            const loadingSpinner = document.getElementById('getCommandLoading');
+            const perfTestBtn = document.querySelector('button[onclick="runPerformanceTest(() => executeGetCommand(true))"]');
+            
+            if (isRunning) {
+                // Disable and show loading state for execute button
+                executeBtn.disabled = true;
+                executeBtn.querySelector('span:not(#getCommandLoading)').classList.add('opacity-0');
+                loadingSpinner.classList.remove('hidden');
+                
+                // Disable and update performance test button
+                perfTestBtn.disabled = true;
+                perfTestBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                perfTestBtn.textContent = 'Command Running...';
+            } else {
+                // Reset execute button
+                executeBtn.disabled = false;
+                executeBtn.querySelector('span:not(#getCommandLoading)').classList.remove('opacity-0');
+                loadingSpinner.classList.add('hidden');
+                
+                // Reset performance test button
+                perfTestBtn.disabled = false;
+                perfTestBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                perfTestBtn.textContent = 'Run Performance Test';
+            }
+        }
+
+        // Update the executeGetCommand function
+        async function executeGetCommand(isPerformanceTest = false) {
+            const uri = document.getElementById('getMooseUri').value;
+            const destPath = document.getElementById('getDestPath').value;
+            const args = ['get'];
+            
+            if (!uri || !destPath) {
+                const errorData = { 
+                    success: false, 
+                    message: 'Error: Both MOOSE URI and Destination Path are required',
+                    responseTime: 0,
+                    command: 'moo get' // Include base command even for errors
+                };
+                if (!isPerformanceTest) {
+                    updateOutput(errorData);
+                }
+                return errorData;
+            }
+
+            args.push(uri);
+            args.push(destPath);
+            
+            // Build command string as we add options
+            const options = {
+                'getCompressed': '--compressed-transfer',
+                'getFillGaps': '--fill-gaps',
+                'getFillGapsOverwrite': '--fill-gaps-and-overwrite-smaller-files',
+                'getForce': '--force',
+                'getIfAvailable': '--get-if-available',
+                'getLargeRetrieval': '--large-retrieval',
+                'getRegex': '--regex'
+            };
+
+            Object.entries(options).forEach(([id, flag]) => {
+                if (document.getElementById(id).checked) args.push(flag);
+            });
+            
+            const licenseFile = document.getElementById('getLicenseFile').value;
+            if (licenseFile) args.push(`--licence-file=${licenseFile}`);
+
+            // Create full command string
+            const fullCommand = `moo ${args.join(' ')}`;
+
+            if (!isPerformanceTest) {
+                updateCommandPreview(args);
+                updateGetCommandButtons(true);
+            }
+            
+            startTime = performance.now();
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 300000);
+                
+                const response = await fetch('/api/execute-command', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-store',
+                        'Pragma': 'no-cache'
+                    },
+                    body: JSON.stringify({ 
+                        args,
+                        performanceTest: isPerformanceTest,
+                        startTime: startTime
+                    }),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                const endTime = performance.now();
+                
+                const data = await response.json();
+                data.command = fullCommand; // Add command to response
+                data.responseTime = data.serverTiming || (endTime - startTime);
+                
+                if (!isPerformanceTest) {
+                    updateOutput(data);
+                }
+                return data;
+            } catch (error) {
+                const errorData = { 
+                    success: false, 
+                    message: 'Error: ' + (error.name === 'AbortError' ? 'Request timed out' : error.message),
+                    responseTime: performance.now() - startTime,
+                    command: fullCommand // Include command even for errors
+                };
+                if (!isPerformanceTest) {
+                    updateOutput(errorData);
+                }
+                return errorData;
+            }
+        }
+
+        async function executePutCommand(isPerformanceTest = false) {
+            const sourcePath = document.getElementById('putSourcePath').value;
+            const destUri = document.getElementById('putDestUri').value;
+            const args = ['put'];
+            
+            if (!sourcePath || !destUri) {
+                const errorData = { 
+                    success: false, 
+                    message: 'Error: Both Source Path and Destination URI are required',
+                    responseTime: 0
+                };
+                // Always show errors
+                updateOutput(errorData);
+                return errorData;
+            }
+
+            args.push(sourcePath);
+            args.push(destUri);
+            
+            // Collect all options
+            const options = {
+                'putCompressed': '--compressed-transfer',
+                'putForce': '--force',
+                'putForceExcludingIdentical': '--force-excluding-identical',
+                'putDryRun': '--dry-run',
+                'putQuiet': '--quiet',
+                'putVerbose': '--verbose'
+            };
+
+            // Add enabled options
+            Object.entries(options).forEach(([id, flag]) => {
+                if (document.getElementById(id).checked) args.push(flag);
+            });
+            
+            const transferThreads = document.getElementById('putTransferThreads').value;
+            if (transferThreads) args.push(`--transfer-threads=${transferThreads}`);
+            
+            const actAs = document.getElementById('putActAs').value;
+            if (actAs) args.push(`--act-as=${actAs}`);
+
+            // Always update command preview
+            updateCommandPreview(args);
+            
+            if (!isPerformanceTest) {
+                const btn = document.getElementById('putCommandBtn');
+                const loadingSpinner = document.getElementById('putCommandLoading');
+                btn.disabled = true;
+                btn.querySelector('span:not(#putCommandLoading)').classList.add('opacity-0');
+                loadingSpinner.classList.remove('hidden');
+            }
+            
+            startTime = performance.now();
+            
+            try {
+                const response = await fetch('/api/execute-command', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-store',
+                        'Pragma': 'no-cache'
+                    },
+                    body: JSON.stringify({ args }),
+                });
+                
+                const data = await response.json();
+                data.responseTime = data.serverTiming || (performance.now() - startTime);
+                
+                // Always update output
+                updateOutput(data);
+                
+                if (!isPerformanceTest) {
+                    const btn = document.getElementById('putCommandBtn');
+                    const loadingSpinner = document.getElementById('putCommandLoading');
+                    btn.disabled = false;
+                    btn.querySelector('span:not(#putCommandLoading)').classList.remove('opacity-0');
+                    loadingSpinner.classList.add('hidden');
+                }
+                return data;
+            } catch (error) {
+                const errorData = { 
+                    success: false, 
+                    message: 'Error: ' + error.message,
+                    responseTime: performance.now() - startTime
+                };
+                // Always update output for errors
+                updateOutput(errorData);
+                
+                if (!isPerformanceTest) {
+                    const btn = document.getElementById('putCommandBtn');
+                    const loadingSpinner = document.getElementById('putCommandLoading');
+                    btn.disabled = false;
+                    btn.querySelector('span:not(#putCommandLoading)').classList.remove('opacity-0');
+                    loadingSpinner.classList.add('hidden');
+                }
+                return errorData;
+            }
+        }
+
+        async function adminLogout() {
+            try {
+                const response = await fetch('/admin/logout', {
+                    method: 'POST',
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                console.error('Logout failed:', error);
+            }
+        }
+
+        function displayResults(data) {
+            const commandDetails = document.getElementById('commandDetails');
+            const commandTimeline = document.getElementById('commandTimeline');
+            
+            // Display command details
+            if (data.commandDetails) {
+                commandDetails.innerHTML = `
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium mb-2">Command Details</h4>
+                        <pre class="text-sm whitespace-pre-wrap">${JSON.stringify(data.commandDetails, null, 2)}</pre>
+                    </div>
+                `;
+            } else {
+                commandDetails.innerHTML = '<p class="text-gray-500">No command details available</p>';
+            }
+            
+            // Display timeline
+            if (data.timeline && data.timeline.length > 0) {
+                commandTimeline.innerHTML = `
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium mb-2">Command Timeline</h4>
+                        <div class="space-y-2">
+                            ${data.timeline.map(event => `
+                                <div class="border-l-2 border-blue-500 pl-4 py-2">
+                                    <div class="text-sm text-gray-600">${new Date(event.timestamp).toLocaleString()}</div>
+                                    <div class="text-sm">${event.message}</div>
+                                    ${event.details ? `<pre class="text-xs text-gray-500 mt-1">${JSON.stringify(event.details, null, 2)}</pre>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                commandTimeline.innerHTML = '<p class="text-gray-500">No timeline events available</p>';
+            }
+        }
+
+        async function searchAppInsights() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const appId = document.getElementById('appId').value.trim();
+            const commandId = document.getElementById('commandId').value.trim();
+            const timeRange = document.getElementById('timeRange').value;
+            const searchTraces = document.getElementById('searchTraces').checked;
+            const searchRequests = document.getElementById('searchRequests').checked;
+            const searchDependencies = document.getElementById('searchDependencies').checked;
+
+            const outputText = document.getElementById('outputText');
+            
+            // Debug log the actual values
+            console.log('Form Values:', {
+                apiKeyPresent: !!apiKey,
+                apiKeyLength: apiKey.length,
+                appId,
+                appIdLength: appId.length,
+                commandId,
+                commandIdLength: commandId.length,
+                timeRange,
+                searchTypes: {
+                    traces: searchTraces,
+                    requests: searchRequests,
+                    dependencies: searchDependencies
+                }
+            });
+            
+            // Detailed validation
+            const missing = [];
+            if (!apiKey) missing.push('API Key');
+            if (!appId) missing.push('Application ID');
+            if (!commandId) missing.push('Command ID');
+
+            if (missing.length > 0) {
+                const errorMessage = `Missing required fields: ${missing.join(', ')}`;
+                console.error('Validation error:', {
+                    apiKeyLength: apiKey.length,
+                    appIdLength: appId.length,
+                    commandIdLength: commandId.length,
+                    missing
+                });
+                outputText.textContent = errorMessage;
+                outputText.className = 'bg-red-50 p-4 rounded-md text-sm overflow-auto max-h-96';
+                alert(errorMessage);
+                return;
+            }
+
+            if (!searchTraces && !searchRequests && !searchDependencies) {
+                const errorMessage = 'Please select at least one type of data to search in';
+                outputText.textContent = errorMessage;
+                outputText.className = 'bg-red-50 p-4 rounded-md text-sm overflow-auto max-h-96';
+                alert(errorMessage);
+                return;
+            }
+
+            const searchButton = document.getElementById('searchButton');
+            const searchSpinner = document.getElementById('searchSpinner');
+            const searchResults = document.getElementById('searchResults');
+
+            searchButton.disabled = true;
+            searchSpinner.classList.remove('hidden');
+            searchResults.classList.add('hidden');
+
+            try {
+                // Simplified request body with exact parameter names
+                const requestBody = {
+                    apiKey: apiKey,
+                    appId: appId,
+                    commandId: commandId,
+                    timeRange: timeRange,
+                    searchTypes: {
+                        traces: searchTraces,
+                        requests: searchRequests,
+                        dependencies: searchDependencies
+                    }
+                };
+
+                // Debug log the request body (without sensitive info)
+                console.log('Request Body (sanitized):', {
+                    ...requestBody,
+                    apiKey: '***'
+                });
+
+                const response = await fetch('/api/search-appinsights', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                let data;
+                const responseText = await response.text();
+                console.log('Raw API Response:', responseText);
+
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    console.error('Failed to parse response as JSON:', parseError);
+                    throw new Error('Invalid response format from server');
+                }
+
+                console.log('API Response:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    ok: response.ok,
+                    data: data
+                });
+
+                if (data.success) {
+                    displayResults(data);
+                    searchResults.classList.remove('hidden');
+                    outputText.textContent = 'Search completed successfully';
+                    outputText.className = 'bg-green-50 p-4 rounded-md text-sm overflow-auto max-h-96';
+                } else {
+                    let errorDetails = '';
+                    if (data.details) {
+                        errorDetails = `\nDetails: ${JSON.stringify(data.details, null, 2)}`;
+                    }
+                    
+                    const errorMessage = `Error searching App Insights:\n${data.message || 'Unknown error'}${errorDetails}\n\nRequest Details:\nCommand ID: ${commandId}\nApp ID: ${appId}\nTime Range: ${timeRange}\nSearch Types: ${Object.entries(requestBody.searchTypes).filter(([,v]) => v).map(([k]) => k).join(', ')}`;
+                    
+                    outputText.textContent = errorMessage;
+                    outputText.className = 'bg-red-50 p-4 rounded-md text-sm overflow-auto max-h-96';
+                    console.error('Search failed:', {
+                        error: data.message,
+                        requestBody: requestBody,
+                        response: data
+                    });
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                const errorMessage = `Error searching App Insights:\n${error.message}\n\nRequest Details:\nCommand ID: ${commandId}\nApp ID: ${appId}\nTime Range: ${timeRange}`;
+                outputText.textContent = errorMessage;
+                outputText.className = 'bg-red-50 p-4 rounded-md text-sm overflow-auto max-h-96';
+                alert('Error searching App Insights: ' + error.message);
+            } finally {
+                searchButton.disabled = false;
+                searchSpinner.classList.add('hidden');
+            }
+        }
+
+        // Replace the showSection function with this version
+        function showSection(section) {
+            console.log('showSection called with:', section);
+            
+            // First, hide all sections
+            const sections = document.querySelectorAll('[id$="-section"]');
+            sections.forEach(el => {
+                el.style.display = 'none';
+            });
+
+            // Show the selected section
+            const selectedSection = document.getElementById(`${section}-section`);
+            if (selectedSection) {
+                selectedSection.style.display = 'block';
+            } else {
+                console.error('Section not found:', section);
+            }
+
+            // Update the title
+            const titles = {
+                'login': 'MOO Login/Logout',
+                'ls': 'MOO LS Command',
+                'get': 'MOO GET Command',
+                'si': 'MOO System Information',
+                'put': 'MOO PUT Command',
+                'appinsights': 'App Insights Search'
+            };
+            
+            const titleElement = document.getElementById('section-title');
+            if (titleElement) {
+                titleElement.textContent = titles[section] || 'MOO CLI Performance Tester';
+            }
+
+            // Update button highlighting - remove active class from all buttons
+            document.querySelectorAll('nav button').forEach(btn => {
+                btn.classList.remove('bg-gray-700');
+            });
+            
+            // Add active class to selected button
+            const activeNav = document.getElementById(`nav-${section}`);
+            if (activeNav) {
+                activeNav.classList.add('bg-gray-700');
+            }
+
+            // Toggle menu color
+            const menuPanel = document.querySelector('.w-64');
+            const colors = ['bg-green-800', 'bg-blue-800', 'bg-purple-800', 'bg-red-800'];
+            const currentColor = colors.find(color => menuPanel.classList.contains(color)) || 'bg-green-800';
+            const currentIndex = colors.indexOf(currentColor);
+            const nextColor = colors[(currentIndex + 1) % colors.length];
+            
+            colors.forEach(color => menuPanel.classList.remove(color));
+            menuPanel.classList.add(nextColor);
+        }
+
+        // Remove the event listeners from DOMContentLoaded and use onclick attributes
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM Content Loaded');
+            
+            // Initialize charts
+            initializeCharts();
+            
+            // Show initial section
+            showSection('login');
+            
+            // Remove any existing click handlers from nav buttons
+            const navButtons = document.querySelectorAll('nav button');
+            navButtons.forEach(button => {
+                button.removeEventListener('click', () => {});
+            });
+        });
+    </script>
+</body>
+</html> 
