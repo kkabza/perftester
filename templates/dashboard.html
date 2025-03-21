@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .bg-custom-lime {
-            background-color: #D7DF43 !important;
+            background-color: #D7DF21 !important;
         }
         
         /* Enhanced input and select styles */
@@ -41,14 +41,23 @@
     </style>
 </head>
 <body class="bg-gray-200 min-h-screen">
-    <div class="flex h-screen">
-        <!-- Left Navigation Panel -->
+    <div class="flex h-screen bg-gray-100">
+        <!-- Sidebar -->
         <div class="w-64 bg-custom-lime text-gray-800">
             <div class="p-4 flex flex-col h-full">
+                <!-- Logo Section -->
                 <div class="h-24 mb-4">
                     <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="MOO Logo" class="h-full w-auto mx-auto object-contain">
                 </div>
-                <h1 class="text-xl font-bold mb-4 text-gray-800">MOO Commands</h1>
+                
+                <!-- User Info Section -->
+                <div class="mb-4 p-2 bg-white/80 rounded">
+                    <h2 class="text-lg font-semibold">MOO Commands</h2>
+                    <p class="text-sm text-gray-700">Welcome, {{ username }}</p>
+                    <p class="text-xs text-gray-600">Role: {{ role }}</p>
+                </div>
+
+                <!-- Navigation -->
                 <nav class="space-y-2">
                     <button onclick="showSection('login')" class="w-full text-left p-2 hover:bg-gray-200 hover:text-black rounded text-gray-800 transition-colors" id="nav-login">
                         Login/Logout
@@ -65,24 +74,30 @@
                     <button onclick="showSection('put')" class="w-full text-left p-2 hover:bg-gray-200 hover:text-black rounded text-gray-800 transition-colors" id="nav-put">
                         moo put
                     </button>
+                    <button onclick="showSection('projinfo')" class="w-full text-left p-2 hover:bg-gray-200 hover:text-black rounded text-gray-800 transition-colors" id="nav-projinfo">
+                        moo projinfo
+                    </button>
                     <button onclick="showSection('appinsights')" class="w-full text-left p-2 hover:bg-gray-200 hover:text-black rounded text-gray-800 transition-colors" id="nav-appinsights">
                         App Insights Search
                     </button>
                 </nav>
             </div>
         </div>
-
-        <!-- Main Content Area -->
+        
+        <!-- Main content -->
         <div class="flex-1 overflow-auto bg-gray-200">
             <div class="p-8">
-                <!-- Top Bar -->
+                <!-- Header with logout -->
                 <div class="flex justify-between items-center mb-8">
                     <h2 class="text-2xl font-bold" id="section-title">MOO CLI Performance Tester</h2>
-                    <button onclick="adminLogout()" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700">
-                        Logout Admin
-                    </button>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-gray-600">Logged in as: {{ username }}</span>
+                        <button onclick="logout()" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700">
+                            Logout
+                        </button>
+                    </div>
                 </div>
-
+                
                 <!-- Performance Test Controls -->
                 <div class="bg-white rounded-lg shadow-md p-6 mb-6">
                     <h3 class="text-xl font-semibold mb-4">Performance Test Settings</h3>
@@ -95,19 +110,103 @@
                             <label class="block text-sm font-medium text-gray-700">Delay Between Runs (ms)</label>
                             <input type="number" id="delay" value="100" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                         </div>
-                        <div class="flex items-end">
-                            <button onclick="clearResults()" class="bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 mr-2">
-                                Clear Results
-                            </button>
-                            <button onclick="stopTest()" class="bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 hidden" id="stopButton">
-                                Stop Test
-                            </button>
+                        <div class="flex items-center space-x-4">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="useSudo" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                <span class="ml-2 text-sm text-gray-600">Run with sudo</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Project Info Command Section -->
+                <div id="projinfo-section" class="mb-6" style="display: none;">
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-xl font-semibold mb-4">MOO Projinfo Command</h3>
+                        <div class="space-y-4">
+                            <!-- Project Names Input -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Project Names</label>
+                                <div class="flex items-center space-x-2">
+                                    <input type="text" id="projinfoProjectNames" 
+                                           class="flex-1 rounded-md border-gray-300 shadow-sm px-4 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                           placeholder="Enter project names (space-separated)">
+                                    <button onclick="addProjectName()" 
+                                            class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        Add
+                                    </button>
+                                </div>
+                                <div id="projectNamesList" class="mt-2 space-y-1">
+                                    <!-- Project names will be added here -->
+                                </div>
+                            </div>
+
+                            <!-- Command Options -->
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="projinfoLong" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                                    <span class="ml-2 text-sm text-gray-700">Long format (-l)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="projinfoMembers" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                                    <span class="ml-2 text-sm text-gray-700">Show members (-m)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="projinfoXml" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                                    <span class="ml-2 text-sm text-gray-700">XML output (-x)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="projinfoDryRun" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                                    <span class="ml-2 text-sm text-gray-700">Dry run (-n)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="projinfoQuiet" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                                    <span class="ml-2 text-sm text-gray-700">Quiet (-q)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="projinfoVerbose" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                                    <span class="ml-2 text-sm text-gray-700">Verbose (-v)</span>
+                                </label>
+                            </div>
+
+                            <!-- Act As Role -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Act As Role (Optional)</label>
+                                <input type="text" id="projinfoActAs" 
+                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                       placeholder="Enter role name">
+                            </div>
+
+                            <!-- Command Preview -->
+                            <div class="space-y-2">
+                                <label class="block text-sm font-medium text-gray-700">Command Preview</label>
+                                <div id="commandPreview" class="bg-gray-100 p-3 rounded-md font-mono text-sm text-gray-400">
+                                    moo projinfo
+                                </div>
+                            </div>
+
+                            <!-- Execute Buttons -->
+                            <div class="flex justify-end space-x-4">
+                                <button onclick="runPerformanceTest(executeProjinfoCommand)" class="bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700">
+                                    Run Performance Test
+                                </button>
+                                <button onclick="executeProjinfoCommand()" id="projinfoCommandBtn"
+                                        class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 relative">
+                                    <span>Execute Command</span>
+                                    <span id="projinfoCommandLoading" class="absolute inset-0 flex items-center justify-center hidden">
+                                        <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Login Section -->
-                <div id="login-section" class="space-y-6" style="display: block;">
+                <div id="login-section" class="space-y-6 mb-6" style="display: block;">
                     <div class="bg-white rounded-lg shadow-md p-6">
                         <h3 class="text-xl font-semibold mb-4">MOO Login Options</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -159,7 +258,7 @@
                 </div>
 
                 <!-- LS Command Section -->
-                <div id="ls-section" class="space-y-6" style="display: none;">
+                <div id="ls-section" class="space-y-6 mb-6" style="display: none;">
                     <div class="bg-white rounded-lg shadow-md p-6">
                         <h3 class="text-xl font-semibold mb-4">MOO LS Command</h3>
                         <div class="space-y-4">
@@ -226,7 +325,7 @@
                                     </svg>
                                 </span>
                             </button>
-                            <button onclick="runPerformanceTest(() => executeLsCommand(true))" class="bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700">
+                            <button onclick="runPerformanceTest(executeLsCommand)" class="bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700">
                                 Run Performance Test
                             </button>
                         </div>
@@ -234,7 +333,7 @@
                 </div>
 
                 <!-- GET Command Section -->
-                <div id="get-section" class="space-y-6" style="display: none;">
+                <div id="get-section" class="space-y-6 mb-6" style="display: none;">
                     <div class="bg-white rounded-lg shadow-md p-6">
                         <h3 class="text-xl font-semibold mb-4">MOO GET Command</h3>
                         
@@ -399,7 +498,7 @@
                                     </svg>
                                 </span>
                             </button>
-                            <button onclick="runPerformanceTest(() => executeGetCommand(true))" class="bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700">
+                            <button onclick="runPerformanceTest(executeGetCommand)" class="bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700">
                                 Run Performance Test
                             </button>
                         </div>
@@ -407,7 +506,7 @@
                 </div>
 
                 <!-- SI Command Section -->
-                <div id="si-section" class="space-y-6" style="display: none;">
+                <div id="si-section" class="space-y-6 mb-6" style="display: none;">
                     <div class="bg-white rounded-lg shadow-md p-6">
                         <h3 class="text-xl font-semibold mb-4">MOO SI Command</h3>
                         <div class="space-y-4">
@@ -430,7 +529,7 @@
                                     </svg>
                                 </span>
                             </button>
-                            <button onclick="runPerformanceTest(() => executeSiCommand(true))" class="bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700">
+                            <button onclick="runPerformanceTest(executeSiCommand)" class="bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700">
                                 Run Performance Test
                             </button>
                         </div>
@@ -438,7 +537,7 @@
                 </div>
 
                 <!-- PUT Command Section -->
-                <div id="put-section" class="space-y-6" style="display: none;">
+                <div id="put-section" class="space-y-6 mb-6" style="display: none;">
                     <div class="bg-white rounded-lg shadow-md p-6">
                         <h3 class="text-xl font-semibold mb-4">MOO PUT Command</h3>
                         <div class="space-y-4">
@@ -494,7 +593,7 @@
                                     </svg>
                                 </span>
                             </button>
-                            <button onclick="runPerformanceTest(() => executePutCommand(true))" class="bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700">
+                            <button onclick="runPerformanceTest(executePutCommand)" class="bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700">
                                 Run Performance Test
                             </button>
                         </div>
@@ -502,7 +601,7 @@
                 </div>
 
                 <!-- App Insights Search Section -->
-                <div id="appinsights-section" class="space-y-6" style="display: none;">
+                <div id="appinsights-section" class="space-y-6 mb-6" style="display: none;">
                     <div class="bg-white rounded-lg shadow-md p-6">
                         <h3 class="text-xl font-semibold mb-4">Azure App Insights Command Search</h3>
                         <div class="space-y-4">
@@ -574,76 +673,87 @@
                 <!-- Performance Results -->
                 <div class="bg-white rounded-lg shadow-md p-6 mb-6">
                     <h3 class="text-xl font-semibold mb-4">Performance Results</h3>
-                    <div class="flex gap-6">
-                        <!-- Main Response Time Chart -->
-                        <div class="flex-grow" style="min-height: 400px">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Average Response Time</label>
+                            <p class="mt-1 text-2xl font-semibold text-indigo-600" id="avgResponseTime">-</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Min Response Time</label>
+                            <p class="mt-1 text-2xl font-semibold text-green-600" id="minResponseTime">-</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Max Response Time</label>
+                            <p class="mt-1 text-2xl font-semibold text-red-600" id="maxResponseTime">-</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Success Rate</label>
+                            <p class="mt-1 text-2xl font-semibold text-blue-600" id="successRate">-</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="h-64">
                             <canvas id="responseTimeChart"></canvas>
                         </div>
-                        <!-- Side Panel with Pie Chart and Stats -->
-                        <div class="w-72 flex flex-col">
-                            <!-- Small Pie Chart -->
-                            <div class="mb-4" style="height: 160px">
-                                <canvas id="statusChart"></canvas>
-                            </div>
-                            <!-- Statistics -->
-                            <div class="space-y-3">
-                                <div class="bg-gray-50 p-3 rounded-lg">
-                                    <h4 class="text-sm font-medium text-gray-500">Average Response Time</h4>
-                                    <p class="text-lg font-semibold" id="avgResponseTime">-</p>
-                                </div>
-                                <div class="bg-gray-50 p-3 rounded-lg">
-                                    <h4 class="text-sm font-medium text-gray-500">Min Response Time</h4>
-                                    <p class="text-lg font-semibold" id="minResponseTime">-</p>
-                                </div>
-                                <div class="bg-gray-50 p-3 rounded-lg">
-                                    <h4 class="text-sm font-medium text-gray-500">Max Response Time</h4>
-                                    <p class="text-lg font-semibold" id="maxResponseTime">-</p>
-                                </div>
-                                <div class="bg-gray-50 p-3 rounded-lg">
-                                    <h4 class="text-sm font-medium text-gray-500">Success Rate</h4>
-                                    <p class="text-lg font-semibold" id="successRate">-</p>
-                                </div>
-                            </div>
+                        <div class="h-64">
+                            <canvas id="statusChart"></canvas>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Results Table -->
-                    <div class="mt-6 overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Run #</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Response Time (ms)</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Output</th>
-                                </tr>
-                            </thead>
-                            <tbody id="resultsTable" class="bg-white divide-y divide-gray-200">
-                            </tbody>
-                        </table>
+                <!-- Command Preview -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h3 class="text-xl font-semibold mb-4">Command Preview</h3>
+                    <div id="commandPreview" class="bg-gray-100 p-3 rounded-md font-mono text-sm text-gray-400">
+                        moo command
                     </div>
                 </div>
 
-                <!-- Output Section -->
-                <div class="bg-white rounded-lg shadow-md p-6 mt-6">
-                    <h3 class="text-xl font-semibold mb-4">Command Preview</h3>
-                    <pre id="commandPreview" class="bg-gray-100 p-4 rounded-md text-sm overflow-auto max-h-32 font-mono"></pre>
-                </div>
-
-                <div class="bg-white rounded-lg shadow-md p-6 mt-6">
+                <!-- Latest Output -->
+                <div class="bg-white rounded-lg shadow-md p-6">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-xl font-semibold">Latest Output</h3>
                         <div class="flex space-x-2">
-                            <button onclick="showPreviousOutput()" id="prevOutputBtn" class="bg-gray-500 text-white py-1 px-3 rounded-md hover:bg-gray-600 disabled:opacity-50" disabled>
-                                Previous
+                            <button onclick="clearResults()" class="bg-gray-500 text-white py-1 px-3 rounded-md hover:bg-gray-600 text-sm">
+                                Clear Results
                             </button>
-                            <span id="outputCounter" class="px-3 py-1 bg-gray-100 rounded-md">0/0</span>
-                            <button onclick="showNextOutput()" id="nextOutputBtn" class="bg-gray-500 text-white py-1 px-3 rounded-md hover:bg-gray-600 disabled:opacity-50" disabled>
-                                Next
+                            <button id="stopButton" onclick="stopTest()" class="bg-red-500 text-white py-1 px-3 rounded-md hover:bg-red-600 text-sm hidden">
+                                Stop Test
                             </button>
                         </div>
                     </div>
-                    <pre id="outputText" class="bg-gray-100 p-4 rounded-md text-sm overflow-auto max-h-96"></pre>
+                    
+                    <!-- Add Output Navigation -->
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex space-x-2">
+                            <button id="prevOutputBtn" onclick="showPreviousOutput()" class="bg-gray-200 text-gray-700 py-1 px-3 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                                Previous
+                            </button>
+                            <button id="nextOutputBtn" onclick="showNextOutput()" class="bg-gray-200 text-gray-700 py-1 px-3 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                                Next
+                            </button>
+                            <span id="outputCounter" class="text-sm text-gray-600">0/0</span>
+                        </div>
+                    </div>
+
+                    <pre id="outputText" class="bg-gray-50 p-4 rounded-md text-sm overflow-auto max-h-96 font-mono"></pre>
+
+                    <!-- Add Results Table -->
+                    <div class="mt-6">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Run</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Response Time</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsTable" class="bg-white divide-y divide-gray-200">
+                                <!-- Results will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -825,11 +935,33 @@
             performanceData = [];
             cachedOutputs = [];
             currentOutputIndex = -1;
+            
+            // Update charts
             updateCharts();
             updateStatistics();
-            updateResultsTable();
-            document.getElementById('outputText').textContent = '';
+            
+            // Clear the output text
+            const outputText = document.getElementById('outputText');
+            if (outputText) {
+                outputText.textContent = '';
+            }
+            
+            // Clear the results table
+            const resultsTable = document.getElementById('resultsTable');
+            if (resultsTable) {
+                resultsTable.innerHTML = '';
+            }
+            
+            // Update navigation
             updateOutputNavigation();
+            
+            // Reset command preview
+            const commandPreview = document.getElementById('commandPreview');
+            if (commandPreview) {
+                commandPreview.textContent = 'moo command';
+                commandPreview.classList.remove('text-gray-900');
+                commandPreview.classList.add('text-gray-400');
+            }
         }
 
         function stopTest() {
@@ -866,7 +998,7 @@
             
             // Get the specific performance test button that was clicked
             const perfTestBtn = document.activeElement;
-            if (!perfTestBtn || !perfTestBtn.textContent.includes('Run Performance Test')) {
+            if (!perfTestBtn || !perfTestBtn.textContent.includes('Run Performance Test')) {  // Fixed the condition
                 console.error('Could not identify performance test button');
                 return;
             }
@@ -890,7 +1022,7 @@
                     
                     try {
                         console.log(`Starting iteration ${i + 1}/${iterations}`);
-                        const result = await commandFunction();
+                        const result = await commandFunction(true);  // Pass true to indicate performance test
                         console.log(`Completed iteration ${i + 1}/${iterations}`, result);
                         
                         // Add to performance data with complete timing information
@@ -1014,13 +1146,10 @@
             const nextBtn = document.getElementById('nextOutputBtn');
             const counter = document.getElementById('outputCounter');
             
-            prevBtn.disabled = currentOutputIndex <= 0;
-            nextBtn.disabled = currentOutputIndex >= cachedOutputs.length - 1;
-            
-            if (cachedOutputs.length > 0) {
-                counter.textContent = `${currentOutputIndex + 1}/${cachedOutputs.length}`;
-            } else {
-                counter.textContent = '0/0';
+            if (prevBtn) prevBtn.disabled = currentOutputIndex <= 0;
+            if (nextBtn) nextBtn.disabled = currentOutputIndex >= cachedOutputs.length - 1;
+            if (counter) {
+                counter.textContent = cachedOutputs.length > 0 ? `${currentOutputIndex + 1}/${cachedOutputs.length}` : '0/0';
             }
         }
 
@@ -1107,20 +1236,23 @@ ${data.output ? '\nOutput:\n' + data.output : ''}${data.error ? '\nError:\n' + d
             });
         }
 
+        // Add this function for MOO login
         async function mooLogin() {
             const username = document.getElementById('mooUsername').value;
             const password = document.getElementById('mooPassword').value;
+            
+            // Get all the checkbox values
             const deviceCode = document.getElementById('deviceCode').checked;
             const interactive = document.getElementById('interactive').checked;
             const managedIdentity = document.getElementById('managedIdentity').checked;
             const servicePrincipal = document.getElementById('servicePrincipal').checked;
             const refresh = document.getElementById('refresh').checked;
-
+            
             try {
                 const response = await fetch('/api/moo-login', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         username,
@@ -1130,25 +1262,32 @@ ${data.output ? '\nOutput:\n' + data.output : ''}${data.error ? '\nError:\n' + d
                         managed_identity: managedIdentity,
                         service_principal: servicePrincipal,
                         refresh
-                    }),
+                    })
                 });
                 
                 const data = await response.json();
                 updateOutput(data);
-                if (data.success) {
-                    document.getElementById('login-section').classList.add('hidden');
-                    document.getElementById('ls-section').classList.remove('hidden');
-                    showSection('ls');
-                }
+                
             } catch (error) {
-                updateOutput({ success: false, message: 'Error: ' + error.message });
+                updateOutput({
+                    success: false,
+                    message: 'Error: ' + error.message,
+                    error: error.toString()
+                });
             }
         }
 
         async function mooLogout() {
+            const useSudo = document.getElementById('useSudo').checked;
             try {
                 const response = await fetch('/api/moo-logout', {
                     method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        use_sudo: useSudo
+                    }),
                 });
                 
                 const data = await response.json();
@@ -1160,32 +1299,39 @@ ${data.output ? '\nOutput:\n' + data.output : ''}${data.error ? '\nError:\n' + d
 
         function updateCommandPreview(args) {
             const commandPreview = document.getElementById('commandPreview');
-            const fullCommand = Array.isArray(args) ? `moo ${args.join(' ')}` : args;
-            commandPreview.textContent = fullCommand;
+            const useSudo = document.getElementById('useSudo').checked;
+            
+            // If args is an array, join it; if it's a string, use it as is
+            const fullCommand = Array.isArray(args) ? args.join(' ') : args;
+            
+            // Add sudo if needed, but don't add 'moo' since it should already be in args
+            commandPreview.textContent = useSudo ? `sudo ${fullCommand}` : fullCommand;
             commandPreview.classList.remove('text-gray-400');
             commandPreview.classList.add('text-gray-900');
-            return fullCommand; // Return the command string for use elsewhere
+            return fullCommand;
         }
 
         async function executeLsCommand(isPerformanceTest = false) {
             const uri = document.getElementById('mooseUri').value;
-            const args = ['ls'];
+            const args = ['moo', 'ls'];  // Start with 'moo ls'
+            const useSudo = document.getElementById('useSudo').checked;
             
+            // Add URI after the command
             if (uri) args.push(uri);
             
             // Collect all options
             const options = {
-                'lsAccessTime': '--access-time',
-                'lsAll': '--all',
-                'lsDirectory': '--directory',
-                'lsFull': '--full',
-                'lsMedia': '--media',
-                'lsRecursive': '--recursive',
+                'lsAccessTime': '-u',
+                'lsAll': '-a',
+                'lsDirectory': '-d',
+                'lsFull': '-f',
+                'lsMedia': '-m',
+                'lsRecursive': '-r',
                 'lsRegex': '--regex',
-                'lsSize': '--size',
-                'lsTime': '--time',
-                'lsViewMetadata': '--view-metadata',
-                'lsXml': '--xml'
+                'lsSize': '-S',
+                'lsTime': '-t',
+                'lsViewMetadata': '-v',
+                'lsXml': '-x'
             };
 
             // Add enabled options
@@ -1196,8 +1342,12 @@ ${data.output ? '\nOutput:\n' + data.output : ''}${data.error ? '\nError:\n' + d
             const page = document.getElementById('lsPage').value;
             if (page) args.push(`--page=${page}`);
 
-            // Always update command preview
-            updateCommandPreview(args);
+            // Update command preview
+            const commandPreview = document.getElementById('commandPreview');
+            const fullCommand = args.join(' ');  // Don't add 'moo' again since it's already in args
+            commandPreview.textContent = useSudo ? `sudo ${fullCommand}` : fullCommand;
+            commandPreview.classList.remove('text-gray-400');
+            commandPreview.classList.add('text-gray-900');
             
             if (!isPerformanceTest) {
                 const btn = document.getElementById('lsCommandBtn');
@@ -1214,19 +1364,16 @@ ${data.output ? '\nOutput:\n' + data.output : ''}${data.error ? '\nError:\n' + d
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Cache-Control': 'no-store',
-                        'Pragma': 'no-cache'
                     },
-                    body: JSON.stringify({ args }),
+                    body: JSON.stringify({
+                        args,  // Send the complete args array including 'moo ls'
+                        use_sudo: useSudo
+                    }),
                 });
                 
                 const data = await response.json();
-                data.responseTime = data.serverTiming || (performance.now() - startTime);
-                
-                // Always update output
-                updateOutput(data);
-                
                 if (!isPerformanceTest) {
+                    updateOutput(data);
                     const btn = document.getElementById('lsCommandBtn');
                     const loadingSpinner = document.getElementById('lsCommandLoading');
                     btn.disabled = false;
@@ -1235,33 +1382,32 @@ ${data.output ? '\nOutput:\n' + data.output : ''}${data.error ? '\nError:\n' + d
                 }
                 return data;
             } catch (error) {
-                const errorData = { 
-                    success: false, 
-                    message: 'Error: ' + (error.name === 'AbortError' ? 'Request timed out' : error.message),
+                const errorData = {
+                    success: false,
+                    message: 'Error: ' + error.message,
                     responseTime: performance.now() - startTime
                 };
-                // Always update output for errors
-                updateOutput(errorData);
-                
                 if (!isPerformanceTest) {
-                    const btn = document.getElementById('lsCommandBtn');
-                    const loadingSpinner = document.getElementById('lsCommandLoading');
-                    btn.disabled = false;
-                    btn.querySelector('span:not(#lsCommandLoading)').classList.remove('opacity-0');
-                    loadingSpinner.classList.add('hidden');
+                    updateOutput(errorData);
                 }
                 return errorData;
             }
         }
 
         async function executeSiCommand(isPerformanceTest = false) {
-            const args = ['si'];
+            const args = ['moo', 'si'];  // Changed from ['si'] to ['moo', 'si']
+            const useSudo = document.getElementById('useSudo').checked;
             
+            // Add options
             if (document.getElementById('siLong').checked) args.push('--long');
             if (document.getElementById('siXml').checked) args.push('--xml');
 
-            // Always update command preview
-            updateCommandPreview(args);
+            // Update command preview with sudo if needed
+            const commandPreview = document.getElementById('commandPreview');
+            const fullCommand = useSudo ? `sudo moo ${args.join(' ')}` : `moo ${args.join(' ')}`;
+            commandPreview.textContent = fullCommand;
+            commandPreview.classList.remove('text-gray-400');
+            commandPreview.classList.add('text-gray-900');
             
             if (!isPerformanceTest) {
                 const btn = document.getElementById('siCommandBtn');
@@ -1271,26 +1417,23 @@ ${data.output ? '\nOutput:\n' + data.output : ''}${data.error ? '\nError:\n' + d
                 loadingSpinner.classList.remove('hidden');
             }
             
-            startTime = performance.now();
+            const startTime = performance.now();
             
             try {
                 const response = await fetch('/api/execute-command', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Cache-Control': 'no-store',
-                        'Pragma': 'no-cache'
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ args }),
+                    body: JSON.stringify({
+                        args,
+                        use_sudo: useSudo
+                    }),
                 });
                 
                 const data = await response.json();
-                data.responseTime = data.serverTiming || (performance.now() - startTime);
-                
-                // Always update output
-                updateOutput(data);
-                
                 if (!isPerformanceTest) {
+                    updateOutput(data);
                     const btn = document.getElementById('siCommandBtn');
                     const loadingSpinner = document.getElementById('siCommandLoading');
                     btn.disabled = false;
@@ -1299,15 +1442,13 @@ ${data.output ? '\nOutput:\n' + data.output : ''}${data.error ? '\nError:\n' + d
                 }
                 return data;
             } catch (error) {
-                const errorData = { 
-                    success: false, 
+                const errorData = {
+                    success: false,
                     message: 'Error: ' + error.message,
                     responseTime: performance.now() - startTime
                 };
-                // Always update output for errors
-                updateOutput(errorData);
-                
                 if (!isPerformanceTest) {
+                    updateOutput(errorData);
                     const btn = document.getElementById('siCommandBtn');
                     const loadingSpinner = document.getElementById('siCommandLoading');
                     btn.disabled = false;
@@ -1322,7 +1463,7 @@ ${data.output ? '\nOutput:\n' + data.output : ''}${data.error ? '\nError:\n' + d
         function updateGetCommandButtons(isRunning) {
             const executeBtn = document.getElementById('getCommandBtn');
             const loadingSpinner = document.getElementById('getCommandLoading');
-            const perfTestBtn = document.querySelector('button[onclick="runPerformanceTest(() => executeGetCommand(true))"]');
+            const perfTestBtn = document.querySelector('button[onclick="runPerformanceTest(executeGetCommand)"]');
             
             if (isRunning) {
                 // Disable and show loading state for execute button
@@ -1351,7 +1492,8 @@ ${data.output ? '\nOutput:\n' + data.output : ''}${data.error ? '\nError:\n' + d
         async function executeGetCommand(isPerformanceTest = false) {
             const uri = document.getElementById('getMooseUri').value;
             const destPath = document.getElementById('getDestPath').value;
-            const args = ['get'];
+            const args = ['moo', 'get'];  // Changed from ['get'] to ['moo', 'get']
+            const useSudo = document.getElementById('useSudo').checked;
             
             if (!uri || !destPath) {
                 const errorData = { 
@@ -1387,7 +1529,12 @@ ${data.output ? '\nOutput:\n' + data.output : ''}${data.error ? '\nError:\n' + d
             const licenseFile = document.getElementById('getLicenseFile')?.value;
             if (licenseFile) args.push(`--licence-file=${licenseFile}`);
 
-            const command = updateCommandPreview(args);
+            // Update command preview with sudo if needed
+            const commandPreview = document.getElementById('commandPreview');
+            const fullCommand = useSudo ? `sudo moo ${args.join(' ')}` : `moo ${args.join(' ')}`;
+            commandPreview.textContent = fullCommand;
+            commandPreview.classList.remove('text-gray-400');
+            commandPreview.classList.add('text-gray-900');
 
             if (!isPerformanceTest) {
                 updateGetCommandButtons(true);
@@ -1405,100 +1552,45 @@ ${data.output ? '\nOutput:\n' + data.output : ''}${data.error ? '\nError:\n' + d
                 const response = await fetch('/api/execute-command', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ args })
+                    body: JSON.stringify({
+                        args,
+                        use_sudo: useSudo
+                    }),
                 });
                 
                 clientTiming.fetchEndTime = performance.now();
                 const data = await response.json();
                 clientTiming.endTime = performance.now();
                 
-                // Add client-side timing information
-                data.clientTiming = {
-                    totalTime: clientTiming.endTime - clientTiming.startTime,
-                    networkTime: clientTiming.fetchEndTime - clientTiming.fetchStartTime,
-                    processingTime: clientTiming.endTime - clientTiming.fetchEndTime
-                };
-
-                // Create performance data entry
-                const perfData = {
-                    responseTime: data.timing ? data.timing.total_time * 1000 : data.clientTiming.totalTime,
-                    success: data.success,
-                    message: data.message,
-                    error: data.error,
-                    output: data.output,
-                    command: command,
-                    serverTime: data.timing ? data.timing.total_time * 1000 : null,
-                    commandTime: data.timing ? data.timing.command_time * 1000 : null,
-                    networkTime: data.clientTiming.networkTime
+                data.timing = {
+                    ...data.timing,
+                    client: {
+                        total: clientTiming.endTime - clientTiming.startTime,
+                        fetch: clientTiming.fetchEndTime - clientTiming.fetchStartTime,
+                        parse: clientTiming.endTime - clientTiming.fetchEndTime
+                    }
                 };
                 
                 if (!isPerformanceTest) {
                     updateOutput(data);
                     updateGetCommandButtons(false);
-                    
-                    // Add single execution to performance data
-                    performanceData = [perfData];
-                    
-                    // Update UI components
-                    updateCharts();
-                    updateStatistics();
-                    updateResultsTable();
-
-                    // Cache the output
-                    cachedOutputs = [{
-                        ...data,
-                        command: command,
-                        iterationNumber: 1,
-                        responseTime: perfData.responseTime
-                    }];
-                    currentOutputIndex = 0;
-                    updateOutputNavigation();
                 }
-
-                return {
-                    ...data,
-                    command: command,
-                    responseTime: perfData.responseTime
-                };
+                return data;
             } catch (error) {
-                clientTiming.endTime = performance.now();
                 const errorData = {
                     success: false,
-                    message: `Error: ${error.message}`,
-                    responseTime: clientTiming.endTime - clientTiming.startTime,
-                    clientTiming: {
-                        totalTime: clientTiming.endTime - clientTiming.startTime
-                    },
-                    command: command
+                    message: 'Error: ' + error.message,
+                    timing: {
+                        client: {
+                            total: performance.now() - clientTiming.startTime
+                        }
+                    }
                 };
-                
                 if (!isPerformanceTest) {
                     updateOutput(errorData);
                     updateGetCommandButtons(false);
-                    
-                    // Add error to performance data
-                    performanceData = [{
-                        responseTime: errorData.responseTime,
-                        success: false,
-                        message: errorData.message,
-                        error: error.message,
-                        command: command
-                    }];
-                    
-                    // Update UI components
-                    updateCharts();
-                    updateStatistics();
-                    updateResultsTable();
-
-                    // Cache the error output
-                    cachedOutputs = [{
-                        ...errorData,
-                        iterationNumber: 1
-                    }];
-                    currentOutputIndex = 0;
-                    updateOutputNavigation();
                 }
                 return errorData;
             }
@@ -1507,24 +1599,27 @@ ${data.output ? '\nOutput:\n' + data.output : ''}${data.error ? '\nError:\n' + d
         async function executePutCommand(isPerformanceTest = false) {
             const sourcePath = document.getElementById('putSourcePath').value;
             const destUri = document.getElementById('putDestUri').value;
-            const args = ['put'];
+            const args = ['moo', 'put'];  // Changed from ['put'] to ['moo', 'put']
+            const useSudo = document.getElementById('useSudo').checked;
             
             if (!sourcePath || !destUri) {
                 const errorData = { 
                     success: false, 
                     message: 'Error: Both Source Path and Destination URI are required',
-                    responseTime: 0
+                    responseTime: 0,
+                    command: 'moo put'
                 };
-                // Always show errors
-                updateOutput(errorData);
+                if (!isPerformanceTest) {
+                    updateOutput(errorData);
+                }
                 return errorData;
             }
 
             args.push(sourcePath);
             args.push(destUri);
             
-            // Collect all options
-            const options = {
+            // Add options with proper null checks
+            const checkboxOptions = {
                 'putCompressed': '--compressed-transfer',
                 'putForce': '--force',
                 'putForceExcludingIdentical': '--force-excluding-identical',
@@ -1533,72 +1628,79 @@ ${data.output ? '\nOutput:\n' + data.output : ''}${data.error ? '\nError:\n' + d
                 'putVerbose': '--verbose'
             };
 
-            // Add enabled options
-            Object.entries(options).forEach(([id, flag]) => {
-                if (document.getElementById(id).checked) args.push(flag);
+            Object.entries(checkboxOptions).forEach(([id, flag]) => {
+                const element = document.getElementById(id);
+                if (element && element.checked) {
+                    args.push(flag);
+                }
             });
             
-            const transferThreads = document.getElementById('putTransferThreads').value;
-            if (transferThreads) args.push(`--transfer-threads=${transferThreads}`);
-            
-            const actAs = document.getElementById('putActAs').value;
-            if (actAs) args.push(`--act-as=${actAs}`);
+            // Handle optional inputs with null checks
+            const transferThreads = document.getElementById('putTransferThreads');
+            if (transferThreads && transferThreads.value) {
+                args.push(`--transfer-threads=${transferThreads.value}`);
+            }
 
-            // Always update command preview
-            updateCommandPreview(args);
+            const actAs = document.getElementById('putActAs');
+            if (actAs && actAs.value) {
+                args.push(`--act-as=${actAs.value}`);
+            }
+
+            // Update command preview with sudo if needed
+            const commandPreview = document.getElementById('commandPreview');
+            const fullCommand = useSudo ? `sudo moo ${args.join(' ')}` : `moo ${args.join(' ')}`;
+            commandPreview.textContent = fullCommand;
+            commandPreview.classList.remove('text-gray-400');
+            commandPreview.classList.add('text-gray-900');
             
+            let btn, loadingSpinner;
             if (!isPerformanceTest) {
-                const btn = document.getElementById('putCommandBtn');
-                const loadingSpinner = document.getElementById('putCommandLoading');
-                btn.disabled = true;
-                btn.querySelector('span:not(#putCommandLoading)').classList.add('opacity-0');
-                loadingSpinner.classList.remove('hidden');
+                btn = document.getElementById('putCommandBtn');
+                loadingSpinner = document.getElementById('putCommandLoading');
+                if (btn && loadingSpinner) {
+                    btn.disabled = true;
+                    const span = btn.querySelector('span:not(#putCommandLoading)');
+                    if (span) span.classList.add('opacity-0');
+                    loadingSpinner.classList.remove('hidden');
+                }
             }
             
-            startTime = performance.now();
+            const startTime = performance.now();
             
             try {
                 const response = await fetch('/api/execute-command', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Cache-Control': 'no-store',
-                        'Pragma': 'no-cache'
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ args }),
+                    body: JSON.stringify({
+                        args,
+                        use_sudo: useSudo
+                    }),
                 });
                 
                 const data = await response.json();
-                data.responseTime = data.serverTiming || (performance.now() - startTime);
-                
-                // Always update output
-                updateOutput(data);
-                
                 if (!isPerformanceTest) {
-                    const btn = document.getElementById('putCommandBtn');
-                    const loadingSpinner = document.getElementById('putCommandLoading');
-                    btn.disabled = false;
-                    btn.querySelector('span:not(#putCommandLoading)').classList.remove('opacity-0');
-                    loadingSpinner.classList.add('hidden');
+                    updateOutput(data);
                 }
                 return data;
             } catch (error) {
-                const errorData = { 
-                    success: false, 
+                const errorData = {
+                    success: false,
                     message: 'Error: ' + error.message,
                     responseTime: performance.now() - startTime
                 };
-                // Always update output for errors
-                updateOutput(errorData);
-                
                 if (!isPerformanceTest) {
-                    const btn = document.getElementById('putCommandBtn');
-                    const loadingSpinner = document.getElementById('putCommandLoading');
-                    btn.disabled = false;
-                    btn.querySelector('span:not(#putCommandLoading)').classList.remove('opacity-0');
-                    loadingSpinner.classList.add('hidden');
+                    updateOutput(errorData);
                 }
                 return errorData;
+            } finally {
+                if (!isPerformanceTest && btn && loadingSpinner) {
+                    btn.disabled = false;
+                    const span = btn.querySelector('span:not(#putCommandLoading)');
+                    if (span) span.classList.remove('opacity-0');
+                    loadingSpinner.classList.add('hidden');
+                }
             }
         }
 
@@ -1821,6 +1923,7 @@ ${data.output ? '\nOutput:\n' + data.output : ''}${data.error ? '\nError:\n' + d
                 'get': 'MOO GET Command',
                 'si': 'MOO System Information',
                 'put': 'MOO PUT Command',
+                'projinfo': 'MOO Projinfo Command',
                 'appinsights': 'App Insights Search'
             };
             
@@ -2019,6 +2122,201 @@ ${data.output ? '\nOutput:\n' + data.output : ''}${data.error ? '\nError:\n' + d
             
             document.getElementById('getMooseUri').value = uri;
             updateCommandPreview(['get', uri, document.getElementById('getDestPath').value]);
+        }
+
+        // Project Info Command Functions
+        let projectNames = new Set();
+
+        function addProjectName() {
+            const input = document.getElementById('projinfoProjectNames');
+            const names = input.value.trim().split(/\s+/);
+            
+            names.forEach(name => {
+                if (name) {
+                    projectNames.add(name);
+                }
+            });
+            
+            updateProjectNamesList();
+            input.value = '';
+            updateProjinfoCommandPreview();
+        }
+
+        function removeProjectName(name) {
+            projectNames.delete(name);
+            updateProjectNamesList();
+            updateProjinfoCommandPreview();
+        }
+
+        function updateProjectNamesList() {
+            const list = document.getElementById('projectNamesList');
+            list.innerHTML = '';
+            
+            projectNames.forEach(name => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center space-x-2';
+                div.innerHTML = `
+                    <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-sm">${name}</span>
+                    <button onclick="removeProjectName('${name}')" class="text-red-600 hover:text-red-800">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function updateProjinfoCommandPreview() {
+            const cmd = ['moo', 'projinfo'];
+            const useSudo = document.getElementById('useSudo').checked;
+            
+            // Add project names
+            cmd.push(...Array.from(projectNames));
+            
+            // Add options
+            if (document.getElementById('projinfoLong').checked) cmd.push('-l');
+            if (document.getElementById('projinfoMembers').checked) cmd.push('-m');
+            if (document.getElementById('projinfoXml').checked) cmd.push('-x');
+            if (document.getElementById('projinfoDryRun').checked) cmd.push('-n');
+            if (document.getElementById('projinfoQuiet').checked) cmd.push('-q');
+            if (document.getElementById('projinfoVerbose').checked) cmd.push('-v');
+            
+            const actAs = document.getElementById('projinfoActAs').value.trim();
+            if (actAs) cmd.push(`--act-as=${actAs}`);
+            
+            // Update preview
+            const preview = document.getElementById('commandPreview');
+            const fullCommand = useSudo ? `sudo ${cmd.join(' ')}` : cmd.join(' ');
+            preview.textContent = fullCommand;
+            preview.classList.remove('text-gray-400');
+            preview.classList.add('text-gray-900');
+        }
+
+        async function executeProjinfoCommand(isPerformanceTest = false) {
+            if (projectNames.size === 0) {
+                if (!isPerformanceTest) {
+                    alert('Please add at least one project name.');
+                }
+                return {
+                    success: false,
+                    message: 'No project names specified',
+                    responseTime: 0
+                };
+            }
+            
+            const args = ['moo', 'projinfo'];  // Changed from ['projinfo'] to ['moo', 'projinfo']
+            args.push(...Array.from(projectNames));
+            
+            // Add all options
+            if (document.getElementById('projinfoLong').checked) args.push('-l');
+            if (document.getElementById('projinfoMembers').checked) args.push('-m');
+            if (document.getElementById('projinfoXml').checked) args.push('-x');
+            if (document.getElementById('projinfoDryRun').checked) args.push('-n');
+            if (document.getElementById('projinfoQuiet').checked) args.push('-q');
+            if (document.getElementById('projinfoVerbose').checked) args.push('-v');
+            
+            const actAs = document.getElementById('projinfoActAs').value.trim();
+            if (actAs) args.push(`--act-as=${actAs}`);
+            
+            const useSudo = document.getElementById('useSudo').checked;
+            
+            if (!isPerformanceTest) {
+                const btn = document.getElementById('projinfoCommandBtn');
+                const loadingSpinner = document.getElementById('projinfoCommandLoading');
+                btn.disabled = true;
+                btn.querySelector('span:not(#projinfoCommandLoading)').classList.add('opacity-0');
+                loadingSpinner.classList.remove('hidden');
+            }
+            
+            try {
+                const response = await fetch('/api/execute-command', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        args,
+                        use_sudo: useSudo
+                    })
+                });
+                
+                const data = await response.json();
+                if (!isPerformanceTest) {
+                    updateOutput(data);
+                }
+                return data;
+            } catch (error) {
+                const errorData = {
+                    success: false,
+                    message: 'Error: ' + error.message,
+                    responseTime: 0
+                };
+                if (!isPerformanceTest) {
+                    updateOutput(errorData);
+                }
+                return errorData;
+            } finally {
+                if (!isPerformanceTest) {
+                    const btn = document.getElementById('projinfoCommandBtn');
+                    const loadingSpinner = document.getElementById('projinfoCommandLoading');
+                    btn.disabled = false;
+                    btn.querySelector('span:not(#projinfoCommandLoading)').classList.remove('opacity-0');
+                    loadingSpinner.classList.add('hidden');
+                }
+            }
+        }
+
+        // Add event listeners for all projinfo options
+        document.getElementById('projinfoLong').addEventListener('change', updateProjinfoCommandPreview);
+        document.getElementById('projinfoMembers').addEventListener('change', updateProjinfoCommandPreview);
+        document.getElementById('projinfoXml').addEventListener('change', updateProjinfoCommandPreview);
+        document.getElementById('projinfoDryRun').addEventListener('change', updateProjinfoCommandPreview);
+        document.getElementById('projinfoQuiet').addEventListener('change', updateProjinfoCommandPreview);
+        document.getElementById('projinfoVerbose').addEventListener('change', updateProjinfoCommandPreview);
+        document.getElementById('projinfoActAs').addEventListener('input', updateProjinfoCommandPreview);
+
+        function showSelectedCommand() {
+            const command = document.getElementById('commandSelect').value;
+            document.querySelectorAll('.command-section').forEach(section => {
+                section.classList.add('hidden');
+            });
+            
+            if (command) {
+                const sectionId = command + 'Section';
+                document.getElementById(sectionId)?.classList.remove('hidden');
+            }
+            
+            // Reset command preview
+            const preview = document.getElementById('commandPreview');
+            preview.textContent = command ? `moo ${command}` : '';
+            preview.classList.remove('text-gray-900');
+            preview.classList.add('text-gray-400');
+            
+            // Reset project names list for projinfo
+            if (command !== 'projinfo') {
+                projectNames.clear();
+                const list = document.getElementById('projectNamesList');
+                if (list) list.innerHTML = '';
+            }
+        }
+
+        async function logout() {
+            try {
+                const response = await fetch('/admin/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                console.error('Error during logout:', error);
+            }
         }
     </script>
 </body>

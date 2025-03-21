@@ -2,9 +2,13 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 import subprocess
 import os
 import time
+import uuid
+import tempfile
+import shutil
 from functools import wraps
 from appinsights import AppInsightsClient
 from dotenv import load_dotenv
+from pathlib import Path
 
 # Load environment variables
 load_dotenv()
@@ -12,32 +16,177 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # For session management
 
-# Admin credentials (in production, use proper authentication system)
-ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "password"
+# User credentials
+USERS = {
+    'admin': {'password': 'password', 'role': 'admin'},
+    'tester1': {'password': 'tester1', 'role': 'user'},
+    'tester2': {'password': 'tester2', 'role': 'user'}
+}
 
 # WSL configuration
-USE_WSL = False  # Default to False, can be set via command line argument
-MOO_LOCATION = os.getenv('MOO_LOCATION', 'moo')  # Default to 'moo' if not specified
+USE_WSL = True  # Default to True since we're using WSL
+MOO_LOCATION = os.getenv('MOO_LOCATION', '/home/kkabza/cli/moo')  # Update to correct path
+
+# Store WSL sessions and their environments
+wsl_sessions = {}
 
 def set_wsl_mode(enabled):
     global USE_WSL
     USE_WSL = enabled
 
-def prepare_command(cmd):
-    """Prepare command for execution, handling WSL if enabled"""
-    if USE_WSL:
-        # Use the configured MOO location when using WSL
-        if cmd[0] == 'moo':
-            cmd[0] = MOO_LOCATION
-        return ['wsl'] + cmd
+def authenticate_user(username, password):
+    """Authenticate user against the USERS dictionary"""
+    if username in USERS and USERS[username]['password'] == password:
+        return {
+            'user_id': str(uuid.uuid4()),
+            'username': username,
+            'role': USERS[username]['role']
+        }
+    return None
+
+def prepare_command(cmd, use_sudo=False):
+    """Prepare the command for execution."""
+    if isinstance(cmd, str):
+        cmd = cmd.split()
+    
+    # Always use ./moo in WSL since we cd to the directory
+    if cmd[0] == 'moo':
+        cmd[0] = './moo'
+    
+    if use_sudo:
+        sudo_password = os.getenv('SUDO_PASSWORD')
+        if sudo_password:
+            # Properly handle sudo with password
+            escaped_password = sudo_password.replace('"', '\\"')
+            return ['echo', f'"{escaped_password}"', '|', 'sudo', '-S', '-E'] + cmd
+        else:
+            raise ValueError("Sudo password not found in environment variables")
+    
     return cmd
+
+def create_wsl_session(user_id, username):
+    """Create a new WSL session with isolated environment for a user"""
+    session_id = str(uuid.uuid4())
+    
+    # Create unique home directory for the user
+    user_home = Path(tempfile.gettempdir()) / f"moo_cli_{user_id}"
+    user_home.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        # Create necessary directories
+        (user_home / '.moo').mkdir(parents=True, exist_ok=True)
+        (user_home / '.cache' / 'moo').mkdir(parents=True, exist_ok=True)
+        
+        # Store session info without creating a persistent process
+        wsl_sessions[user_id] = {
+            'session_id': session_id,
+            'created_at': time.time(),
+            'home_dir': str(user_home),
+            'username': username
+        }
+        
+        return session_id
+        
+    except Exception as e:
+        # Clean up if something goes wrong
+        shutil.rmtree(user_home, ignore_errors=True)
+        raise Exception(f"Failed to create WSL session: {str(e)}")
+
+def execute_wsl_command(cmd, user_id):
+    """Execute a command in WSL with user's isolated environment"""
+    if user_id not in wsl_sessions:
+        raise Exception("No active session found")
+    
+    session = wsl_sessions[user_id]
+    user_home = session['home_dir']
+    
+    # Convert Windows path to WSL path format
+    wsl_home = '/mnt/c' + user_home[2:].replace('\\', '/')
+    
+    # Ensure we use ./moo for the command if it starts with moo
+    if cmd[0] == 'moo':
+        cmd[0] = './moo'
+    
+    print(f"[DEBUG] Executing command: {' '.join(cmd)}")  # Only show the command being executed
+    
+    # Create the bash script content
+    bash_script = f"""#!/bin/bash
+cd /home/kkabza/cli || exit 1
+export HOME="{wsl_home}"
+export MOO_USER_HOME="{wsl_home}"
+export MOO_CONFIG_DIR="{wsl_home}/.moo"
+export MOO_CACHE_DIR="{wsl_home}/.cache/moo"
+export WSL_USER_HOME="{wsl_home}"
+export PATH="/home/kkabza/cli:$PATH"
+mkdir -p "{wsl_home}/.moo" "{wsl_home}/.cache/moo"
+
+# Execute the command
+{' '.join(f"'{str(x)}'" if ' ' in str(x) or any(c in str(x) for c in '@%!') else str(x) for x in cmd)}
+"""
+    
+    # Create a temporary script file
+    script_path = Path(user_home) / "moo_command.sh"
+    try:
+        with open(script_path, "w", newline='\n') as f:
+            f.write(bash_script)
+        
+        # Make the script executable in WSL
+        subprocess.run(['wsl', '-d', 'Ubuntu-22.04', 'chmod', '+x', f'/mnt/c{script_path.as_posix()[2:]}'])
+        
+        # Execute the script
+        wsl_cmd = ['wsl', '-d', 'Ubuntu-22.04', 'bash', f'/mnt/c{script_path.as_posix()[2:]}']
+        result = subprocess.run(wsl_cmd, capture_output=True, text=True)
+        
+        # Only show output if there is any
+        if result.stdout:
+            print(f"Command output:\n{result.stdout}")
+        if result.stderr:
+            print(f"Command error:\n{result.stderr}")
+        
+        # If there's no error message but command failed, use stdout as error
+        if result.returncode != 0 and not result.stderr and result.stdout:
+            result.stderr = result.stdout
+            result.stdout = ""
+        
+        return result
+        
+    finally:
+        # Clean up the temporary script
+        try:
+            script_path.unlink()
+        except:
+            pass
+
+def get_wsl_session(user_id):
+    """Get or create a WSL session for a user"""
+    if user_id not in wsl_sessions:
+        return None
+    return wsl_sessions[user_id]
+
+def cleanup_wsl_session(user_id):
+    """Cleanup WSL session and its environment"""
+    if user_id in wsl_sessions:
+        session = wsl_sessions[user_id]
+        try:
+            # Remove user's temporary directory
+            shutil.rmtree(session['home_dir'], ignore_errors=True)
+            # Remove session from tracking
+            del wsl_sessions[user_id]
+        except Exception as e:
+            print(f"Error cleaning up session for {user_id}: {str(e)}")
+
+def cleanup_old_sessions():
+    """Cleanup WSL sessions older than 1 hour"""
+    current_time = time.time()
+    for user_id in list(wsl_sessions.keys()):
+        if current_time - wsl_sessions[user_id]['created_at'] > 3600:  # 1 hour
+            cleanup_wsl_session(user_id)
 
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'admin_logged_in' not in session:
-            return redirect(url_for('index'))
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -67,31 +216,62 @@ def measure_execution(func):
 
 @app.route('/')
 def index():
-    if 'admin_logged_in' in session:
-        return render_template('dashboard.html')
+    if 'user_id' in session and 'username' in session:
+        return render_template('dashboard.html', username=session['username'], role=session['role'])
     return render_template('login.html')
 
 @app.route('/admin/login', methods=['POST'])
 def admin_login():
-    username = request.json.get('username')
-    password = request.json.get('password')
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
     
-    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-        session['admin_logged_in'] = True
-        return jsonify({'success': True, 'message': 'Login successful'})
-    return jsonify({'success': False, 'message': 'Invalid credentials'})
+    user = authenticate_user(username, password)
+    if user:
+        # Generate new user_id for this session
+        user_id = str(uuid.uuid4())
+        
+        # Store user info in session
+        session['user_id'] = user_id
+        session['username'] = username
+        session['role'] = user['role']
+        
+        # Create new WSL session for user
+        create_wsl_session(user_id, username)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Welcome {username}!',
+            'role': user['role']
+        })
+    
+    return jsonify({
+        'success': False,
+        'message': 'Invalid credentials'
+    }), 401
 
 @app.route('/admin/logout', methods=['POST'])
+@login_required
 def admin_logout():
-    session.pop('admin_logged_in', None)
-    return jsonify({'success': True, 'message': 'Logged out successfully'})
+    user_id = session['user_id']
+    cleanup_wsl_session(user_id)
+    session.clear()
+    return jsonify({'success': True})
 
 @app.route('/api/moo-login', methods=['POST'])
 @login_required
 def moo_login():
     try:
+        user_id = session['user_id']
+        if user_id not in wsl_sessions:
+            return jsonify({
+                'success': False,
+                'message': 'No active session found. Please log in again.',
+                'error': 'SESSION_NOT_FOUND'
+            }), 401
+
         data = request.json
-        cmd = ['moo', 'login']
+        cmd = ['./moo', 'login']  # Use relative path since we cd to the directory
         
         # Add optional arguments based on the request
         if data.get('device_code'):
@@ -105,78 +285,134 @@ def moo_login():
         if data.get('refresh'):
             cmd.extend(['--refresh'])
         if data.get('username'):
-            cmd.extend(['--username', data['username']])
+            cmd.extend(['--ropc', '-u', data['username']])  # Changed to -u flag
         if data.get('password'):
-            cmd.extend(['--password', data['password']])
-            
-        cmd = prepare_command(cmd)
-        result = subprocess.run(cmd, capture_output=True, text=True)
+            cmd.extend(['-p', data['password']])  # Changed to -p flag
         
+        print(f"Executing MOO login command: {' '.join(cmd)}")  # Debug logging
+        result = execute_wsl_command(cmd, user_id)
+        
+        print(f"Raw command result - stdout: {result.stdout}, stderr: {result.stderr}, returncode: {result.returncode}")  # Additional debug
+        
+        # Always include both stdout and stderr in the response
+        response_data = {
+            'success': result.returncode == 0,
+            'output': result.stdout.strip() if result.stdout else '',
+            'error': result.stderr.strip() if result.stderr else '',
+            'message': None
+        }
+        
+        # Set an appropriate message based on the result
         if result.returncode == 0:
-            return jsonify({'success': True, 'message': 'MOO login successful', 'output': result.stdout})
+            response_data['message'] = 'MOO login successful'
+            if not response_data['output']:
+                response_data['output'] = 'Login completed successfully'
         else:
-            return jsonify({'success': False, 'message': 'MOO login failed', 'error': result.stderr})
+            response_data['message'] = 'MOO login failed'
+            if not response_data['error'] and result.stdout:
+                response_data['error'] = result.stdout
+            if not response_data['error']:
+                response_data['error'] = 'Login failed with no error message'
+                
+        print(f"Sending response to UI: {response_data}")  # Debug logging
+        return jsonify(response_data)
+        
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)})
+        print(f"MOO login error: {str(e)}")  # Debug logging
+        return jsonify({
+            'success': False,
+            'message': 'Internal server error',
+            'error': str(e),
+            'output': ''
+        })
 
 @app.route('/api/moo-logout', methods=['POST'])
 @login_required
 def moo_logout():
     try:
-        cmd = prepare_command(['moo', 'logout'])
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        user_id = session['user_id']
+        if user_id not in wsl_sessions:
+            return jsonify({
+                'success': False,
+                'message': 'No active session found. Please log in again.',
+                'error': 'SESSION_NOT_FOUND'
+            }), 401
+
+        data = request.json or {}
+        cmd = prepare_command(['moo', 'logout'], use_sudo=data.get('use_sudo', False))
+        result = execute_wsl_command(cmd, user_id)
         
         if result.returncode == 0:
-            return jsonify({'success': True, 'message': 'MOO logout successful', 'output': result.stdout})
+            return jsonify({
+                'success': True,
+                'message': 'MOO logout successful',
+                'output': result.stdout
+            })
         else:
-            return jsonify({'success': False, 'message': 'MOO logout failed', 'error': result.stderr})
+            return jsonify({
+                'success': False,
+                'message': 'MOO logout failed',
+                'error': result.stderr,
+                'output': result.stdout
+            })
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)})
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        })
 
 @app.route('/api/execute-command', methods=['POST'])
 @login_required
 @measure_execution
 def execute_command():
-    timestamps = {
-        'request_received': time.time(),
-        'command_start': None,
-        'command_end': None,
-        'response_ready': None
-    }
+    user_id = session['user_id']
     
+    if user_id not in wsl_sessions:
+        return jsonify({
+            'success': False,
+            'message': 'No active session found. Please log in again.',
+            'error': 'SESSION_NOT_FOUND'
+        }), 401
+    
+    data = request.json
+    args = data.get('args', [])
+    use_sudo = data.get('use_sudo', False)
+    
+    # Prepare the command
+    cmd = prepare_command(args, use_sudo=use_sudo)
+    
+    start_time = time.time()
     try:
-        data = request.json
-        cmd = ['moo'] + data.get('args', [])
-        cmd = prepare_command(cmd)
+        # Execute command in a fresh WSL process
+        result = execute_wsl_command(cmd, user_id)
         
-        timestamps['command_start'] = time.time()
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        timestamps['command_end'] = time.time()
+        success = result.returncode == 0
+        message = "Command executed successfully" if success else result.stderr
         
-        response_data = {
-            'success': result.returncode == 0,
-            'message': 'Command executed successfully' if result.returncode == 0 else 'Command failed',
-            'output': result.stdout,
-            'error': result.stderr,
-            'timing': {
-                'total_time': timestamps['command_end'] - timestamps['request_received'],
-                'command_time': timestamps['command_end'] - timestamps['command_start'],
-                'server_processing_time': timestamps['command_start'] - timestamps['request_received'],
-                'timestamps': timestamps
-            }
+        end_time = time.time()
+        timing = {
+            'total_time': end_time - start_time,
+            'command_time': end_time - start_time,
+            'server_processing_time': 0
         }
         
-        timestamps['response_ready'] = time.time()
-        return jsonify(response_data)
+        return jsonify({
+            'success': success,
+            'message': message,
+            'output': result.stdout,
+            'error': result.stderr,
+            'timing': timing,
+            'command': ' '.join(cmd)
+        })
         
     except Exception as e:
-        timestamps['error_time'] = time.time()
         return jsonify({
             'success': False,
             'message': str(e),
             'timing': {
-                'total_time': timestamps['error_time'] - timestamps['request_received'],
-                'timestamps': timestamps
+                'total_time': time.time() - start_time,
+                'command_time': 0,
+                'server_processing_time': 0
             }
         })
 
@@ -204,6 +440,11 @@ def search_appinsights():
             'success': False,
             'message': f'Error: {str(e)}'
         }), 500
+
+# Run cleanup periodically
+@app.before_request
+def before_request():
+    cleanup_old_sessions()
 
 if __name__ == '__main__':
     import argparse
